@@ -5,6 +5,24 @@ import (
 	"net/rpc"
 )
 
+const config []map[string]string
+
+config[0] = map[string]string{
+    "port": "0000",
+    "host": "127.0.0.1",
+    "filename": "0.txt",
+}
+config[1] = map[string]string{
+    "port": "0001",
+    "host": "127.0.0.1",
+    "filename": "1.txt",
+}
+config[2] = map[string]string{
+    "port": "0002",
+    "host": "127.0.0.1",
+    "filename": "2.txt",
+}
+
 type KeyValue struct {
 	Key, Value string
 }
