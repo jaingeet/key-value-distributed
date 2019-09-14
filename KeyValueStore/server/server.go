@@ -24,17 +24,17 @@ type Task int
 var keyValueStore []KeyValue
 
 // GetToDo takes a string type and returns a ToDo
-func (t *Task) GetKey(key string, reply *value) error {
-	*reply = "123"
+func (t *Task) GetKey(key string, value *string) error {
+	*value = "123"
 	return nil
 }
 
-func (t *Task) PutKey(key string, value string, reply *old_value) error {
-	*reply = "1234"
+func (t *Task) PutKey(key string, value string, old_value *string) error {
+	*old_value = "1234"
 	return nil
 }
 
-func init(host string, port string) {
+func Init(host string, port string) {
 	task := new(Task)
 	// Publish the receivers methods
 	err := rpc.Register(task)
@@ -54,4 +54,8 @@ func init(host string, port string) {
 	if err != nil {
 		log.Fatal("Error serving: ", err)
 	}
+}
+
+func main() {
+	
 }
