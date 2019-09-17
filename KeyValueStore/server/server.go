@@ -1,10 +1,13 @@
 package main
 
 import (
+	"bufio"
 	"log"
 	"net"
 	"net/http"
 	"net/rpc"
+	"os"
+	"strings"
 )
 
 var config []map[string]string
@@ -13,7 +16,7 @@ var serverIndex int
 // Make a new KeyValue type that is a typed collection of fields
 // (Key and Value), both of which are of type string
 type KeyValue struct {
-	Key, Value string
+	Key, Value, TimeStamp string
 }
 
 // TODO: Do we need this?
@@ -28,10 +31,36 @@ var keyValueStore []KeyValue
 
 // GetToDo takes a string type and returns a ToDo
 func (t *Task) GetKey(key string, value *string) error {
-	*value = "123"
 	// use cache (may be later)
 	// find the key in file and return
 	// return null if not found
+
+	file, err := os.Open(config[serverIndex]["filename"])
+	if err != nil {
+		log.Fatal(err)
+		return err
+	}
+	defer file.Close()
+
+	scanner := bufio.NewScanner(file)
+
+	// Ignore the first line as it contains the last updated time
+	// Not sure if we also need to call Text() to move the pointer
+	scanner.Scan()
+
+	for scanner.Scan() {
+		var line []string = strings.Split(scanner.Text(), ",")
+		if line[0] == key {
+			*value = line[1]
+			return nil
+		}
+	}
+
+	if err := scanner.Err(); err != nil {
+		log.Fatal(err)
+		return err
+	}
+
 	return nil
 }
 
@@ -61,9 +90,36 @@ func (t *Task) SyncReplicas(reply *string) error {
 	return nil
 }
 
-func (t *Task) GetUpdates(timestamp string, reply **string) error {
+// We don't want to make this an RPC Call
+func GetUpdates(timestamp string) []KeyValue {
 	// return an array of all key,value and timestamp where timestamp > given timestamp
-	return nil
+
+	var updates []KeyValue
+
+	file, err := os.Open(config[serverIndex]["filename"])
+
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer file.Close()
+
+	scanner := bufio.NewScanner(file)
+
+	// Ignore the first line as it contains the last updated time
+	scanner.Scan()
+
+	for scanner.Scan() {
+		var line []string = strings.Split(scanner.Text(), ",")
+		if line[2] >= timestamp {
+			updates = append(updates, KeyValue{Key: line[0], Value: line[1], TimeStamp: line[2]})
+		}
+	}
+
+	if err := scanner.Err(); err != nil {
+		log.Fatal(err)
+	}
+
+	return updates
 }
 
 func (t *Task) SyncKey(key string, value string, timestamp string, reply *string) error {
