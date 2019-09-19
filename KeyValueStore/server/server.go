@@ -13,6 +13,9 @@ import (
 var config []map[string]string
 var serverIndex int
 
+
+var filename string = config[serverIndex]["filename"]
+
 // Make a new KeyValue type that is a typed collection of fields
 // (Key and Value), both of which are of type string
 type KeyValue struct {
@@ -87,6 +90,29 @@ func (t *Task) SyncReplicas(reply *string) error {
 	// read the last updated timestamp (-5 seconds etc -- for failover delay) from the file
 	// get all the key value and timestamp pairs from other servers that were updated after this timestamp
 	// call synckey method for all the key value pairs
+
+	file, err := os.OpenFile(filename, os.O_RDONLY, 0644)
+	if err != nil {
+		log.Fatal(err)
+		return err
+	}
+	defer file.Close()
+
+	scanner := bufio.NewScanner(file)
+	scanner.Scan();
+
+	var timestamp string = scanner.Text()
+	var time int64 = 0;
+	time, err = strconv.ParseInt(timestamp, 10, 64)
+	time = time - 5*1000;
+
+	var updates = GetUpdates(time)
+
+	// To Do - add functionality for bulk update
+	for _, update := range updates {
+		SyncKey(update.Key, update.Value, update.TimeStamp)
+	}
+
 	return nil
 }
 
@@ -128,6 +154,60 @@ func (t *Task) SyncKey(key string, value string, timestamp string, reply *string
 	// if updated timestamp > timestamp arg (do nothing)
 	// if equal ? (CASE NEEDS TO BE GIVEN A THOUGHT)
 	// else: update the key with the passed value and timestamp
+
+	data, err := ioutil.ReadFile(filename)
+	if err != nil {
+		log.Fatal(err)
+		return err
+	}
+
+	lines := strings.Split(string(data), "\n")
+	var found = false // to check if the key is present or not
+
+	var TimeInFile int64 = 0;
+	var UpdatedTime int64 = 0;
+	for i, line := range lines {
+		var array []string = strings.Split(line, ",")
+		if i != 0 {
+			TimeInFile, err = strconv.ParseInt(array[2], 10, 64)
+			UpdatedTime, err = strconv.ParseInt(timestamp, 10, 64)
+			if key == array[0] {
+				if TimeInFile < UpdatedTime {
+					lines[i] = key + "," + value + "," + timestamp;
+				}
+				found = true;
+				break;
+			}
+		}
+	}
+
+	TimeInFile, err = strconv.ParseInt(lines[0], 10, 64)
+	UpdatedTime, err = strconv.ParseInt(timestamp, 10, 64)
+
+	if TimeInFile < UpdatedTime {
+		lines[0] = strconv.FormatInt(UpdatedTime, 10);
+	}
+
+	output := strings.Join(lines, "\n")
+	err = ioutil.WriteFile(filename, []byte(output), 0644)
+	if err != nil {
+		log.Fatal(err)
+		return err
+	}
+
+	// if key is not found, we need to append it to data
+	if !found {
+		file, _ := os.OpenFile(filename, os.O_APPEND|os.O_WRONLY, 0644)
+		if _, err := file.Write([]byte("\n" + key + "," + value + "," + timestamp)); err != nil {
+			log.Fatal(err)
+			return err
+		}
+		if err := file.Close(); err != nil {
+			log.Fatal(err)
+			return err
+		}
+	}
+
 	return nil
 }
 
