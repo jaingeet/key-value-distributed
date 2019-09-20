@@ -51,7 +51,9 @@ func (t *Task) GetKey(key string, value *string) error {
 
 	// Ignore the first line as it contains the last updated time
 	// Not sure if we also need to call Text() to move the pointer
-	scanner.Scan()
+	if scanner.Scan() {
+		scanner.Text()
+	}
 
 	for scanner.Scan() {
 		var line []string = strings.Split(scanner.Text(), ",")
@@ -182,7 +184,10 @@ func (t *Task) GetUpdates(timestamp string, updates *[]KeyValue) error {
 	scanner := bufio.NewScanner(file)
 
 	// Ignore the first line as it contains the last updated time
-	scanner.Scan()
+
+	if scanner.Scan() {
+		scanner.Text()
+	}
 
 	for scanner.Scan() {
 		var line []string = strings.Split(scanner.Text(), ",")
