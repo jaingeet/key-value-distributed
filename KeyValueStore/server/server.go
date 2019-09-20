@@ -2,17 +2,19 @@ package main
 
 import (
 	"bufio"
+	"io/ioutil"
 	"log"
 	"net"
 	"net/http"
 	"net/rpc"
 	"os"
+	"strconv"
 	"strings"
+	"time"
 )
 
 var config []map[string]string
 var serverIndex int
-
 
 var filename string = config[serverIndex]["filename"]
 
@@ -67,21 +69,67 @@ func (t *Task) GetKey(key string, value *string) error {
 	return nil
 }
 
-func (t *Task) PutKey(key string, value string, old_value *string) error {
-	*old_value = "1234"
-
+//PutKey ...  TODO: can change timestamp type to Time instead of string
+func (t *Task) PutKey(key string, value string, oldValue *string) error {
 	//get file and find the given key
-
 	//initialise the epoch timestamp
-
 	// first line of the file should contain last updated timestamp
-
 	// update last updated timestamp and the key timestamp
-
 	// if EOF reached append new key, value and timestamp in the end of the file
-
 	// send async requests to update the key value pair with timestamp in other replicas (if no response received
 	// in callback from the other server, reinit the server that is not up)
+
+	*oldValue = "1234"
+	keyFound := false
+	filePath := config[serverIndex]["filename"]
+	curTimeStamp := string(time.Now().UnixNano())
+	newKeyValueString := string(key + "," + value + "," + curTimeStamp)
+
+	fileContent, err := ioutil.ReadFile(filePath)
+
+	if err != nil {
+		log.Fatal(err)
+		return err
+	}
+
+	lines := strings.Split(string(fileContent), "\n")
+
+	lines[0] = curTimeStamp
+
+	for i := 1; i < len(lines); i++ {
+		line := strings.Split(lines[i], ",")
+		if line[0] == key {
+			*oldValue = line[1]
+			lines[i] = newKeyValueString
+			keyFound = true
+			break
+		}
+	}
+
+	if !keyFound {
+		lines = append(lines, newKeyValueString)
+	}
+
+	newFileContent := strings.Join(lines[:], "\n")
+	err = ioutil.WriteFile(filename, []byte(newFileContent), 0)
+	if err != nil {
+		log.Fatal(err)
+		return err
+	}
+
+	// need to create connection with other 2 clients
+	//TODO: need to figure this out
+	for index, client := range config {
+		if index != serverIndex {
+			client, err := rpc.DialHTTP("tcp", config[index]["host"]+":"+config[index]["port"])
+			if err != nil {
+				log.Fatal(err)
+			} else {
+				// how to register callback to know what's happening and to handle failures / restart
+				syncKeyClient := client.Go("Task.SyncKey", key, value, curTimeStamp, &reply)
+			}
+		}
+	}
 
 	return nil
 }
@@ -99,14 +147,17 @@ func (t *Task) SyncReplicas(reply *string) error {
 	defer file.Close()
 
 	scanner := bufio.NewScanner(file)
-	scanner.Scan();
+	scanner.Scan()
 
 	var timestamp string = scanner.Text()
-	var time int64 = 0;
+	var time int64 = 0
 	time, err = strconv.ParseInt(timestamp, 10, 64)
-	time = time - 5*1000;
+	time = time - 5*1000
 
-	var updates = GetUpdates(time)
+	var updates []KeyValue
+
+	//TODO: make a connection and an RPC Call here? (also need to get updates from all servers)
+	GetUpdates(time, &updates)
 
 	// To Do - add functionality for bulk update
 	for _, update := range updates {
@@ -116,16 +167,15 @@ func (t *Task) SyncReplicas(reply *string) error {
 	return nil
 }
 
-// We don't want to make this an RPC Call
-func GetUpdates(timestamp string) []KeyValue {
+//GetUpdates ... to get key values updated after the timestamp
+func (t *Task) GetUpdates(timestamp string, updates *[]KeyValue) error {
 	// return an array of all key,value and timestamp where timestamp > given timestamp
-
-	var updates []KeyValue
 
 	file, err := os.Open(config[serverIndex]["filename"])
 
 	if err != nil {
 		log.Fatal(err)
+		return err
 	}
 	defer file.Close()
 
@@ -137,15 +187,16 @@ func GetUpdates(timestamp string) []KeyValue {
 	for scanner.Scan() {
 		var line []string = strings.Split(scanner.Text(), ",")
 		if line[2] >= timestamp {
-			updates = append(updates, KeyValue{Key: line[0], Value: line[1], TimeStamp: line[2]})
+			*updates = append(*updates, KeyValue{Key: line[0], Value: line[1], TimeStamp: line[2]})
 		}
 	}
 
 	if err := scanner.Err(); err != nil {
 		log.Fatal(err)
+		return err
 	}
 
-	return updates
+	return nil
 }
 
 func (t *Task) SyncKey(key string, value string, timestamp string, reply *string) error {
@@ -164,8 +215,8 @@ func (t *Task) SyncKey(key string, value string, timestamp string, reply *string
 	lines := strings.Split(string(data), "\n")
 	var found = false // to check if the key is present or not
 
-	var TimeInFile int64 = 0;
-	var UpdatedTime int64 = 0;
+	var TimeInFile int64 = 0
+	var UpdatedTime int64 = 0
 	for i, line := range lines {
 		var array []string = strings.Split(line, ",")
 		if i != 0 {
@@ -173,10 +224,10 @@ func (t *Task) SyncKey(key string, value string, timestamp string, reply *string
 			UpdatedTime, err = strconv.ParseInt(timestamp, 10, 64)
 			if key == array[0] {
 				if TimeInFile < UpdatedTime {
-					lines[i] = key + "," + value + "," + timestamp;
+					lines[i] = key + "," + value + "," + timestamp
 				}
-				found = true;
-				break;
+				found = true
+				break
 			}
 		}
 	}
@@ -185,7 +236,7 @@ func (t *Task) SyncKey(key string, value string, timestamp string, reply *string
 	UpdatedTime, err = strconv.ParseInt(timestamp, 10, 64)
 
 	if TimeInFile < UpdatedTime {
-		lines[0] = strconv.FormatInt(UpdatedTime, 10);
+		lines[0] = strconv.FormatInt(UpdatedTime, 10)
 	}
 
 	output := strings.Join(lines, "\n")
