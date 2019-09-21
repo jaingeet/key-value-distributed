@@ -128,6 +128,7 @@ func (t *Task) PutKey(key string, value string, oldValue *string) error {
 				log.Fatal(err)
 			} else {
 				// how to register callback to know what's happening and to handle failures / restart
+				// callback (check reply and restart server if there is a connection error)
 				syncKeyClient := client.Go("Task.SyncKey", key, value, curTimeStamp, &reply)
 			}
 		}
@@ -269,6 +270,8 @@ func (t *Task) SyncKey(key string, value string, timestamp string, reply *string
 
 //Init ... takes in config and index of the current server in config
 func Init(config []map[string]string, index int) {
+	// create file and add first line if not already present
+	// sync after all servers are up
 	task := new(Task)
 	// Publish the receivers methods
 	err := rpc.Register(task)

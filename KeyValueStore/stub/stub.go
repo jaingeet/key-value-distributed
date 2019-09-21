@@ -1,57 +1,64 @@
 package main
 
+import "C"
+
 import (
 	"log"
+	"math/rand"
 	"net/rpc"
 )
-
-const config []map[string]string
-
-config[0] = map[string]string{
-    "port": "0000",
-    "host": "127.0.0.1",
-    "filename": "0.txt",
-}
-config[1] = map[string]string{
-    "port": "0001",
-    "host": "127.0.0.1",
-    "filename": "1.txt",
-}
-config[2] = map[string]string{
-    "port": "0002",
-    "host": "127.0.0.1",
-    "filename": "2.txt",
-}
-
-type KeyValue struct {
-	Key, Value string
-}
 
 var err error
 var client Client
 var reply string
 
-func kv739_init(char** server_list) int {
-	server_list="localhost:1234";
-	client, err := rpc.DialHTTP("tcp", "localhost:1234")
+//export kv739_init
+func kv739_init(serverList []string) int {
+	rand := rand.Intn(len(serverList))
+	address := serverList[rand]
+	client, err := rpc.DialHTTP("tcp", address)
 	if err != nil {
 		log.Fatal("Connection error: ", err)
+		return -1
 	}
-	return 0;
+	return 0
 }
 
-func kv739_shutdown(void) int {
-	return 0;
+//export kv739_shutdown
+func kv739_shutdown() int {
+	err := client.Close()
+	if err != nil {
+		log.Fatal("Unable to shutdown client connection: ", err)
+		return -1
+	}
+	return 0
 }
 
-func kv739_get(char* key, char* value) int {
-	client.Call("Task.GetKey", key, value);
-	return 0;
+//export kv739_get
+func kv739_get(key string, value string) int {
+	err := client.Call("Task.GetKey", key, &value)
+	if err != nil {
+		log.Fatal("Could not get key: ", key, err)
+		return -1
+	}
+	if len(value) > 1 {
+		return 0
+	}
+	return 1
 }
 
-func kv739_put(char* key, char* value, char* old_value) int {
-	client.Call("Task.GetKey", key, value, old_value);
-	return 0;
+//export kv739_put
+func kv739_put(key, value, oldValue string) int {
+	err := client.Call("Task.GetKey", key, value, &oldValue)
+	if err != nil {
+		log.Fatal("Could not put key: ", key, " value: ", value, err)
+		return -1
+	}
+
+	if len(oldValue) > 1 {
+		return 0
+	}
+	return 1
 }
 
 func main() {
