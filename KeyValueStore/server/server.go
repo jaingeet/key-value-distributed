@@ -24,6 +24,10 @@ type KeyValue struct {
 	Key, Value, TimeStamp string
 }
 
+type KeyValuePair struct {
+	Key, Value string
+}
+
 // TODO: Do we need this?
 type EditKeyValue struct {
 	Key, Value, OldValue string
@@ -72,7 +76,7 @@ func (t *Task) GetKey(key string, value *string) error {
 }
 
 //PutKey ...  TODO: can change timestamp type to Time instead of string
-func (t *Task) PutKey(key string, value string, oldValue *string) error {
+func (t *Task) PutKey(keyValue KeyValuePair, oldValue *string) error {
 	//get file and find the given key
 	//initialise the epoch timestamp
 	// first line of the file should contain last updated timestamp
@@ -85,7 +89,7 @@ func (t *Task) PutKey(key string, value string, oldValue *string) error {
 	keyFound := false
 	filePath := config[serverIndex]["filename"]
 	curTimeStamp := string(time.Now().UnixNano())
-	newKeyValueString := string(key + "," + value + "," + curTimeStamp)
+	newKeyValueString := string(keyValue.Key + "," + keyValue.Value + "," + curTimeStamp)
 
 	fileContent, err := ioutil.ReadFile(filePath)
 
@@ -100,7 +104,7 @@ func (t *Task) PutKey(key string, value string, oldValue *string) error {
 
 	for i := 1; i < len(lines); i++ {
 		line := strings.Split(lines[i], ",")
-		if line[0] == key {
+		if line[0] == keyValue.Key {
 			*oldValue = line[1]
 			lines[i] = newKeyValueString
 			keyFound = true
@@ -129,7 +133,7 @@ func (t *Task) PutKey(key string, value string, oldValue *string) error {
 			} else {
 				// how to register callback to know what's happening and to handle failures / restart
 				// callback (check reply and restart server if there is a connection error)
-				syncKeyClient := client.Go("Task.SyncKey", key, value, curTimeStamp, &reply)
+				syncKeyClient := client.Go("Task.SyncKey", KeyValue{Key: keyValue.Key, Value: keyValue.Value, TimeStamp: curTimeStamp}, &reply)
 			}
 		}
 	}
@@ -164,7 +168,7 @@ func (t *Task) SyncReplicas(reply *string) error {
 
 	// To Do - add functionality for bulk update
 	for _, update := range updates {
-		SyncKey(update.Key, update.Value, update.TimeStamp)
+		SyncKey(update)
 	}
 
 	return nil
@@ -205,7 +209,7 @@ func (t *Task) GetUpdates(timestamp string, updates *[]KeyValue) error {
 	return nil
 }
 
-func (t *Task) SyncKey(key string, value string, timestamp string, reply *string) error {
+func (t *Task) SyncKey(keyValue KeyValue, reply *string) error {
 	// find key in the file
 	// if found: check the updated timestamp for the key
 	// if updated timestamp > timestamp arg (do nothing)
@@ -227,10 +231,10 @@ func (t *Task) SyncKey(key string, value string, timestamp string, reply *string
 		var array []string = strings.Split(line, ",")
 		if i != 0 {
 			TimeInFile, err = strconv.ParseInt(array[2], 10, 64)
-			UpdatedTime, err = strconv.ParseInt(timestamp, 10, 64)
-			if key == array[0] {
+			UpdatedTime, err = strconv.ParseInt(keyValue.TimeStamp, 10, 64)
+			if keyValue.Key == array[0] {
 				if TimeInFile < UpdatedTime {
-					lines[i] = key + "," + value + "," + timestamp
+					lines[i] = keyValue.Key + "," + keyValue.Value + "," + keyValue.TimeStamp
 				}
 				found = true
 				break
@@ -239,7 +243,7 @@ func (t *Task) SyncKey(key string, value string, timestamp string, reply *string
 	}
 
 	TimeInFile, err = strconv.ParseInt(lines[0], 10, 64)
-	UpdatedTime, err = strconv.ParseInt(timestamp, 10, 64)
+	UpdatedTime, err = strconv.ParseInt(keyValue.TimeStamp, 10, 64)
 
 	if TimeInFile < UpdatedTime {
 		lines[0] = strconv.FormatInt(UpdatedTime, 10)
@@ -255,7 +259,7 @@ func (t *Task) SyncKey(key string, value string, timestamp string, reply *string
 	// if key is not found, we need to append it to data
 	if !found {
 		file, _ := os.OpenFile(filename, os.O_APPEND|os.O_WRONLY, 0644)
-		if _, err := file.Write([]byte("\n" + key + "," + value + "," + timestamp)); err != nil {
+		if _, err := file.Write([]byte("\n" + keyValue.Key + "," + keyValue.Value + "," + keyValue.TimeStamp)); err != nil {
 			log.Fatal(err)
 			return err
 		}
