@@ -1,47 +1,34 @@
 #include <stdio.h>
 #include "keyvalue.h"
 
-void getCharPtr(char **abc) {
-    printf("size is %lu, %lu, %lu ", sizeof(abc), sizeof(abc[0]), sizeof(abc) / sizeof(abc[0]));
-    
-    int namesLen = -1;
-
-    while(abc[++namesLen] != NULL) {
-
-    }
-
-    printf("nameslen %d ", namesLen);
-}
-
-char *globalServerList[] = {
-    "localhost:0000",
-    "localhost:0001",
-    "localhost:0002",
-};
-
 int main() {
     printf("Using keyvalue lib from C:\n");
-   
-    //Call Add() - passing integer params, interger result
-    // GoInt a = 12;
-    // GoInt b = 99;
-    // printf("awesome.Add(12,99) = %d\n", Add(a, b)); 
-
-    // char serverList[3][100] = { 
-    //     "localhost:3000",
-    //     "localhost:5000",
-    //     "localhost:6000"
-    // };
 
     char *serverList[] = {
-        "localhost:0000",
-        "localhost:0001",
-        "localhost:0002",
+        "localhost:8001",
+        "localhost:8002",
+        "localhost:8003",
+        NULL
     };
 
-    // printf("keyvalue.keyvalue_init(12,99) = %d\n", kv739_init(serverList));
+    printf("keyvalue.keyvalue_init(12,99) = %d\n", kv739_init(serverList, 3));
 
-    getCharPtr(serverList);
+    char* oldValue;
+    printf("calling get function ---- %d \n", kv739_put("a", "123", oldValue));
+    printf("old value for key a is === %s ", oldValue);
+    printf("getting key value a from the server --- %d ", kv739_get("a", oldValue));
+    printf("value for key a from server is === %s ", oldValue);
+    printf("calling get function ---- %d \n", kv739_put("b", "124", oldValue));
+    printf("old value for key b is === %s ", oldValue);
+    printf("getting key value b from the server --- %d ", kv739_get("b", oldValue));
+    printf("value for key b from server is === %s ", oldValue);
+
+
+    printf("calling server shutdown = %d\n", kv739_shutdown());
+
+    printf("this should return an error: getting key value a from the server --- %d ", kv739_get("a", oldValue));
+
+    // getCharPtr(serverList);
 
     //Call Cosine() - passing float param, float returned
     // printf("awesome.Cosine(1) = %f\n", (float)(Cosine(1.0)));
