@@ -102,7 +102,7 @@ func (t *Task) PutKey(keyValue KeyValuePair, oldValue *string) error {
 
 	lines[0] = curTimeStamp
 
-	for i := 1; i < len(lines); i++ {
+	for i := 1; i < len(lines); i++ { 
 		line := strings.Split(lines[i], ",")
 		if line[0] == keyValue.Key {
 			*oldValue = line[1]
@@ -123,48 +123,57 @@ func (t *Task) PutKey(keyValue KeyValuePair, oldValue *string) error {
 		return err
 	}
 
-	// need to create connection with other 2 clients
-	//TODO: need to figure this out
 	for index, client := range config {
 		if index != serverIndex {
-			client, err := rpc.DialHTTP("tcp", config[index]["host"]+":"+config[index]["port"])
-			if err != nil {
-				log.Fatal(err)
-			} else {
-				// how to register callback to know what's happening and to handle failures / restart
-				// callback (check reply and restart server if there is a connection error)
-				syncKeyClient := client.Go("Task.SyncKey", KeyValue{Key: keyValue.Key, Value: keyValue.Value, TimeStamp: curTimeStamp}, &reply)
-			}
+			go func(index int, curTimeStamp string, keyValue KeyValue) {
+				client, err := rpc.DialHTTP("tcp", config[index]["host"]+":"+config[index]["port"])
+				if err != nil {
+					// callback (check reply and restart server if there is a connection error)
+					RestartServer(index)
+					log.Fatal(err)
+				} else {
+					err := client.Go("Task.SyncKey", KeyValue{Key: keyValue.Key, Value: keyValue.Value, TimeStamp: curTimeStamp}, &reply)
+					if err != nil {
+						log.Fatal(err)
+					}
+				}
+			} (index, curTimeStamp, keyValue)
 		}
 	}
 
 	return nil
 }
 
-func (t *Task) SyncReplicas(reply *string) error {
-	// read the last updated timestamp (-5 seconds etc -- for failover delay) from the file
+func (t *Task) RestartServer(serverIndex int) {
+	// here -r is for server restart
+    cmd := exec.Command("go", "run", "server.go", serverIndex, " -r")
+    err := cmd.Run()
+    if err != nil {
+        fmt.Printf("error\n")
+        log.Fatal(err)
+    }
+}
+
+func (t *Task) SyncReplicas(time int64) error {
 	// get all the key value and timestamp pairs from other servers that were updated after this timestamp
 	// call synckey method for all the key value pairs
-
-	file, err := os.OpenFile(filename, os.O_RDONLY, 0644)
-	if err != nil {
-		log.Fatal(err)
-		return err
-	}
-	defer file.Close()
-
-	scanner := bufio.NewScanner(file)
-	scanner.Scan()
-
-	var timestamp string = scanner.Text()
-	var time int64 = 0
-	time, err = strconv.ParseInt(timestamp, 10, 64)
-	time = time - 5*1000
 
 	var updates []KeyValue
 
 	//TODO: make a connection and an RPC Call here? (also need to get updates from all servers)
-	GetUpdates(time, &updates)
+	for index, client := range config {
+		if index != serverIndex {
+			client, err := rpc.DialHTTP("tcp", config[index]["host"]+":"+config[index]["port"])
+			if err != nil {
+				log.Fatal(err)
+			} else {
+				err := client.Go("Task.GetUpdates", time, &updates)
+				if err != nil {
+					RestartServer(index)
+				}
+			}
+		}
+	}
 
 	// To Do - add functionality for bulk update
 	for _, update := range updates {
@@ -273,7 +282,7 @@ func (t *Task) SyncKey(keyValue KeyValue, reply *string) error {
 }
 
 //Init ... takes in config and index of the current server in config
-func Init(config []map[string]string, index int) {
+func Init(index int, restart bool) {
 	// create file and add first line if not already present
 	// sync after all servers are up
 	task := new(Task)
@@ -282,20 +291,49 @@ func Init(config []map[string]string, index int) {
 	if err != nil {
 		log.Fatal("Format of service Task isn't correct. ", err)
 	}
+
+	// Sync with the other server before restart
+	var time int64 = 0
+	if restart == true {
+		// read the last updated timestamp (-5 seconds etc -- for failover delay) from the file
+		file, err := os.OpenFile(filename, os.O_RDONLY, 0644)
+		if err != nil {
+			log.Fatal(err)
+			return err
+		}
+		defer file.Close()
+
+		scanner := bufio.NewScanner(file)
+		scanner.Scan()
+
+		var timestamp string = scanner.Text()
+		time, err = strconv.ParseInt(timestamp, 10, 64)
+		time = time - 5*1000
+	}
+
 	// Register a HTTP handler
 	rpc.HandleHTTP()
 	// Listen to TPC connections on port 1234
-	listener, e := net.Listen("tcp", host+":"+port)
+	listener, e := net.Listen("tcp", config[index]["host"]+":"+config[index]["port"])
 	if e != nil {
 		log.Fatal("Listen error: ", e)
 	}
-	log.Printf("Serving RPC server on port %d", 1234)
+	log.Printf("Serving RPC server on port %d", config[index]["port"])
 	// Start accept incoming HTTP connections
 	err = http.Serve(listener, nil)
 	if err != nil {
 		log.Fatal("Error serving: ", err)
 	}
+
+	SyncReplicas(time)
 }
 
 func main() {
+	args := os.Args[1:]
+	var int serverIndex = args[1];
+	var restart bool = false
+	if len(args) > 1 {
+        restart = true
+    }
+    Init(serverIndex, restart)
 }
