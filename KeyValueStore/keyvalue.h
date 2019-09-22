@@ -69,7 +69,7 @@ extern "C" {
 #endif
 
 
-extern int kv739_init(char** p0);
+extern int kv739_init(char** p0, int p1);
 
 extern int kv739_shutdown();
 

@@ -20,18 +20,10 @@ type KeyValuePair struct {
 	Key, Value string
 }
 
-func getStrLen(str **C.char) C.int {
-	namesLen := C.int(0)
-	for **str != C.char(`\0`) {
-		namesLen = namesLen + 1
-	}
-	return namesLen
-}
-
 //export kv739_init
-func kv739_init(cserverListArg **C.char) C.int {
-	length := unsafe.Sizeof(cserverListArg)
-	length = 3
+func kv739_init(cserverListArg **C.char, length C.int) C.int {
+	//TODO: can you work without length argument?
+
 	tmpslice := (*[1 << 30]*C.char)(unsafe.Pointer(cserverListArg))[:length:length]
 	serverListArg := make([]string, length)
 	for i, s := range tmpslice {
