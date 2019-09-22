@@ -13,6 +13,12 @@ void getCharPtr(char **abc) {
     printf("nameslen %d ", namesLen);
 }
 
+char *globalServerList[] = {
+    "localhost:0000",
+    "localhost:0001",
+    "localhost:0002",
+};
+
 int main() {
     printf("Using keyvalue lib from C:\n");
    
@@ -28,11 +34,9 @@ int main() {
     // };
 
     char *serverList[] = {
-        "localhost:3000",
-        "localhost:5000",
-        "localhost:6000",
-        "maskd",
-        NULL
+        "localhost:0000",
+        "localhost:0001",
+        "localhost:0002",
     };
 
     // printf("keyvalue.keyvalue_init(12,99) = %d\n", kv739_init(serverList));

@@ -2,19 +2,37 @@ package main
 
 import (
 	"bufio"
+	"fmt"
 	"io/ioutil"
 	"log"
 	"net"
 	"net/http"
 	"net/rpc"
 	"os"
+	"os/exec"
 	"strconv"
 	"strings"
 	"time"
 )
 
-var config []map[string]string
-var serverIndex int
+var config = []map[string]string{
+	{
+		"port":     "0000",
+		"host":     "localhost",
+		"filename": "0.txt",
+	},
+	{
+		"port":     "0001",
+		"host":     "localhost",
+		"filename": "1.txt",
+	},
+	{
+		"port":     "0002",
+		"host":     "localhost",
+		"filename": "2.txt",
+	},
+}
+var serverIndex int = 1;
 
 var filename string = config[serverIndex]["filename"]
 
@@ -123,28 +141,26 @@ func (t *Task) PutKey(keyValue KeyValuePair, oldValue *string) error {
 		return err
 	}
 
-	for index, client := range config {
+	for index, _ := range config {
 		if index != serverIndex {
-			go func(index int, curTimeStamp string, keyValue KeyValue) {
-				client, err := rpc.DialHTTP("tcp", config[index]["host"]+":"+config[index]["port"])
+			client, err := rpc.DialHTTP("tcp", config[index]["host"]+":"+config[index]["port"])
+			if err != nil {
+				// callback (check reply and restart server if there is a connection error)
+				RestartServer(index)
+				log.Fatal(err)
+			} else {
+				err := client.Go("Task.SyncKey", KeyValue{Key: keyValue.Key, Value: keyValue.Value, TimeStamp: curTimeStamp}, &reply, nil)
 				if err != nil {
-					// callback (check reply and restart server if there is a connection error)
-					RestartServer(index)
 					log.Fatal(err)
-				} else {
-					err := client.Go("Task.SyncKey", KeyValue{Key: keyValue.Key, Value: keyValue.Value, TimeStamp: curTimeStamp}, &reply)
-					if err != nil {
-						log.Fatal(err)
-					}
 				}
-			} (index, curTimeStamp, keyValue)
+			}
 		}
 	}
 
 	return nil
 }
 
-func (t *Task) RestartServer(serverIndex int) {
+func RestartServer(serverIndex int) {
 	// here -r is for server restart
     cmd := exec.Command("go", "run", "server.go", serverIndex, " -r")
     err := cmd.Run()
@@ -154,20 +170,20 @@ func (t *Task) RestartServer(serverIndex int) {
     }
 }
 
-func (t *Task) SyncReplicas(time int64) error {
+func SyncReplicas(time int64) error {
 	// get all the key value and timestamp pairs from other servers that were updated after this timestamp
 	// call synckey method for all the key value pairs
 
 	var updates []KeyValue
 
 	//TODO: make a connection and an RPC Call here? (also need to get updates from all servers)
-	for index, client := range config {
+	for index, _ := range config {
 		if index != serverIndex {
 			client, err := rpc.DialHTTP("tcp", config[index]["host"]+":"+config[index]["port"])
 			if err != nil {
 				log.Fatal(err)
 			} else {
-				err := client.Go("Task.GetUpdates", time, &updates)
+				err := client.Go("Task.GetUpdates", time, &updates, nil)
 				if err != nil {
 					RestartServer(index)
 				}
@@ -177,7 +193,7 @@ func (t *Task) SyncReplicas(time int64) error {
 
 	// To Do - add functionality for bulk update
 	for _, update := range updates {
-		SyncKey(update)
+		SyncKeyLocally(update)
 	}
 
 	return nil
@@ -218,12 +234,7 @@ func (t *Task) GetUpdates(timestamp string, updates *[]KeyValue) error {
 	return nil
 }
 
-func (t *Task) SyncKey(keyValue KeyValue, reply *string) error {
-	// find key in the file
-	// if found: check the updated timestamp for the key
-	// if updated timestamp > timestamp arg (do nothing)
-	// if equal ? (CASE NEEDS TO BE GIVEN A THOUGHT)
-	// else: update the key with the passed value and timestamp
+func SyncKeyLocally(keyValue KeyValue) error {
 
 	data, err := ioutil.ReadFile(filename)
 	if err != nil {
@@ -281,8 +292,17 @@ func (t *Task) SyncKey(keyValue KeyValue, reply *string) error {
 	return nil
 }
 
+func (t *Task) SyncKey(keyValue KeyValue) error {
+	// find key in the file
+	// if found: check the updated timestamp for the key
+	// if updated timestamp > timestamp arg (do nothing)
+	// if equal ? (CASE NEEDS TO BE GIVEN A THOUGHT)
+	// else: update the key with the passed value and timestamp
+	return SyncKeyLocally(keyValue);
+}
+
 //Init ... takes in config and index of the current server in config
-func Init(index int, restart bool) {
+func Init(index int, restart bool) error {
 	// create file and add first line if not already present
 	// sync after all servers are up
 	task := new(Task)
@@ -324,13 +344,15 @@ func Init(index int, restart bool) {
 	if err != nil {
 		log.Fatal("Error serving: ", err)
 	}
-
-	SyncReplicas(time)
+	if(restart == true) {
+		SyncReplicas(time)
+	}
+	return nil
 }
 
 func main() {
 	args := os.Args[1:]
-	var int serverIndex = args[1];
+	serverIndex, err = strconv.Atoi(args[1])
 	var restart bool = false
 	if len(args) > 1 {
         restart = true
