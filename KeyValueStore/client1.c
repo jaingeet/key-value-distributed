@@ -1,6 +1,18 @@
 #include <stdio.h>
 #include "keyvalue.h"
 
+void getCharPtr(char **abc) {
+    printf("size is %lu, %lu, %lu ", sizeof(abc), sizeof(abc[0]), sizeof(abc) / sizeof(abc[0]));
+    
+    int namesLen = -1;
+
+    while(abc[++namesLen] != NULL) {
+
+    }
+
+    printf("nameslen %d ", namesLen);
+}
+
 int main() {
     printf("Using keyvalue lib from C:\n");
    
@@ -9,13 +21,23 @@ int main() {
     // GoInt b = 99;
     // printf("awesome.Add(12,99) = %d\n", Add(a, b)); 
 
-    char serverList[3][100] = { 
+    // char serverList[3][100] = { 
+    //     "localhost:3000",
+    //     "localhost:5000",
+    //     "localhost:6000"
+    // };
+
+    char *serverList[] = {
         "localhost:3000",
         "localhost:5000",
-        "localhost:6000"
+        "localhost:6000",
+        "maskd",
+        NULL
     };
 
-    printf("keyvalue.keyvalue_init(12,99) = %d\n", keyvalue_init(serverList));
+    // printf("keyvalue.keyvalue_init(12,99) = %d\n", kv739_init(serverList));
+
+    getCharPtr(serverList);
 
     //Call Cosine() - passing float param, float returned
     // printf("awesome.Cosine(1) = %f\n", (float)(Cosine(1.0)));

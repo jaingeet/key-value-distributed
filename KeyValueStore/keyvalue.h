@@ -69,13 +69,13 @@ extern "C" {
 #endif
 
 
-extern GoInt kv739_init(GoSlice p0);
+extern int kv739_init(char** p0);
 
-extern GoInt kv739_shutdown();
+extern int kv739_shutdown();
 
-extern GoInt kv739_get(GoString p0, GoString p1);
+extern int kv739_get(char* p0, char* p1);
 
-extern GoInt kv739_put(GoString p0, GoString p1, GoString p2);
+extern int kv739_put(char* p0, char* p1, char* p2);
 
 #ifdef __cplusplus
 }
