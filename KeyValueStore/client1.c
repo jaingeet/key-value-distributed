@@ -5,9 +5,9 @@ int main() {
     printf("Using keyvalue lib from C:\n");
 
     char *serverList[] = {
-        "localhost:3000",
-        "localhost:5000",
-        "localhost:6000",
+        "localhost:8001",
+        "localhost:8002",
+        "localhost:8003",
         NULL
     };
 
