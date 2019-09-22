@@ -17,17 +17,17 @@ import (
 
 var config = []map[string]string{
 	{
-		"port":     "0000",
+		"port":     "8001",
 		"host":     "localhost",
 		"filename": "0.txt",
 	},
 	{
-		"port":     "0001",
+		"port":     "8002",
 		"host":     "localhost",
 		"filename": "1.txt",
 	},
 	{
-		"port":     "0002",
+		"port":     "8003",
 		"host":     "localhost",
 		"filename": "2.txt",
 	},
@@ -149,7 +149,7 @@ func (t *Task) PutKey(keyValue KeyValuePair, oldValue *string) error {
 				RestartServer(index)
 				log.Fatal(err)
 			} else {
-				err := client.Go("Task.SyncKey", KeyValue{Key: keyValue.Key, Value: keyValue.Value, TimeStamp: curTimeStamp}, &reply, nil)
+				err := client.Go("Task.SyncKey", KeyValue{Key: keyValue.Key, Value: keyValue.Value, TimeStamp: curTimeStamp}, nil, nil)
 				if err != nil {
 					log.Fatal(err)
 				}
@@ -162,7 +162,7 @@ func (t *Task) PutKey(keyValue KeyValuePair, oldValue *string) error {
 
 func RestartServer(serverIndex int) {
 	// here -r is for server restart
-    cmd := exec.Command("go", "run", "server.go", serverIndex, " -r")
+    cmd := exec.Command("go", "run", "server.go", strconv.Itoa(serverIndex), "&", "-r")
     err := cmd.Run()
     if err != nil {
         fmt.Printf("error\n")
@@ -352,9 +352,10 @@ func Init(index int, restart bool) error {
 
 func main() {
 	args := os.Args[1:]
-	serverIndex, err = strconv.Atoi(args[1])
+	fmt.Printf("len %d", len(args))
+	serverIndex, _ = strconv.Atoi(args[0])
 	var restart bool = false
-	if len(args) > 1 {
+	if len(args) > 2 {
         restart = true
     }
     Init(serverIndex, restart)
