@@ -162,12 +162,14 @@ func (t *Task) PutKey(keyValue KeyValuePair, oldValue *string) error {
 
 func RestartServer(serverIndex int) {
 	// here -r is for server restart
-    cmd := exec.Command("go", "run", "server.go", strconv.Itoa(serverIndex), "&", "-r")
-    err := cmd.Run()
+    cmd := exec.Command("go", "run", "server.go", strconv.Itoa(serverIndex), " &", " -r")
+    err := cmd.Start()
     if err != nil {
         fmt.Printf("error\n")
         log.Fatal(err)
     }
+	pid := cmd.Process.Pid
+	fmt.Printf("Server %d restarts with process id: %d\n", serverIndex, pid)
 }
 
 func SyncReplicas(time int64) error {
