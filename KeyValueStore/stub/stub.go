@@ -93,10 +93,10 @@ func kv739_put(ckey *C.char, cvalue *C.char, coldValue *C.char) C.int {
 	key := C.GoString(ckey)
 	value := C.GoString(cvalue)
 	oldValue := C.GoString(coldValue)
-	err := client.Call("Task.GetKey", KeyValuePair{Key: key, Value: value}, &oldValue)
+	err := client.Call("Task.PutKey", KeyValuePair{Key: key, Value: value}, &oldValue)
 	if err != nil {
-		log.Fatal("Could not put key: ", key, " value: ", value, err)
-		//Retry logic
+		log.Fatal("Could not put key: ", key, " value: ", value, " err: ", err)
+		//TODO: Retry logic only if err contains connection
 		if len(serverList) > 1 {
 			for index, server := range serverList {
 				if index != serverIndex {

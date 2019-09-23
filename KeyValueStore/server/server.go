@@ -19,20 +19,20 @@ var config = []map[string]string{
 	{
 		"port":     "8001",
 		"host":     "localhost",
-		"filename": "0.txt",
+		"filename": "./0.txt",
 	},
 	{
 		"port":     "8002",
 		"host":     "localhost",
-		"filename": "1.txt",
+		"filename": "./1.txt",
 	},
 	{
 		"port":     "8003",
 		"host":     "localhost",
-		"filename": "2.txt",
+		"filename": "./2.txt",
 	},
 }
-var serverIndex int = 1;
+var serverIndex int = 1
 
 var filename string = config[serverIndex]["filename"]
 
@@ -107,9 +107,16 @@ func (t *Task) PutKey(keyValue KeyValuePair, oldValue *string) error {
 	keyFound := false
 	filePath := config[serverIndex]["filename"]
 	curTimeStamp := string(time.Now().UnixNano())
+	fmt.Printf("masnmms,d")
+	fmt.Printf("hello here")
+
 	newKeyValueString := string(keyValue.Key + "," + keyValue.Value + "," + curTimeStamp)
 
+	fmt.Printf("newKeyValue string is %s ", newKeyValueString)
+
 	fileContent, err := ioutil.ReadFile(filePath)
+
+	fmt.Printf("here1 fileContent is %s err is %s ", fileContent, err)
 
 	if err != nil {
 		log.Fatal(err)
@@ -120,7 +127,7 @@ func (t *Task) PutKey(keyValue KeyValuePair, oldValue *string) error {
 
 	lines[0] = curTimeStamp
 
-	for i := 1; i < len(lines); i++ { 
+	for i := 1; i < len(lines); i++ {
 		line := strings.Split(lines[i], ",")
 		if line[0] == keyValue.Key {
 			*oldValue = line[1]
@@ -134,25 +141,24 @@ func (t *Task) PutKey(keyValue KeyValuePair, oldValue *string) error {
 		lines = append(lines, newKeyValueString)
 	}
 
+	fmt.Printf("here2")
 	newFileContent := strings.Join(lines[:], "\n")
 	err = ioutil.WriteFile(filename, []byte(newFileContent), 0)
 	if err != nil {
-		log.Fatal(err)
+		fmt.Printf("%s ", err)
 		return err
 	}
 
-	for index, _ := range config {
+	fmt.Printf("here3")
+	for index := range config {
 		if index != serverIndex {
 			client, err := rpc.DialHTTP("tcp", config[index]["host"]+":"+config[index]["port"])
 			if err != nil {
 				// callback (check reply and restart server if there is a connection error)
 				RestartServer(index)
-				log.Fatal(err)
+				fmt.Printf("%s ", err)
 			} else {
-				err := client.Go("Task.SyncKey", KeyValue{Key: keyValue.Key, Value: keyValue.Value, TimeStamp: curTimeStamp}, nil, nil)
-				if err != nil {
-					log.Fatal(err)
-				}
+				client.Go("Task.SyncKey", KeyValue{Key: keyValue.Key, Value: keyValue.Value, TimeStamp: curTimeStamp}, nil, nil)
 			}
 		}
 	}
@@ -162,12 +168,12 @@ func (t *Task) PutKey(keyValue KeyValuePair, oldValue *string) error {
 
 func RestartServer(serverIndex int) {
 	// here -r is for server restart
-    cmd := exec.Command("go", "run", "server.go", strconv.Itoa(serverIndex), "&", "-r")
-    err := cmd.Run()
-    if err != nil {
-        fmt.Printf("error\n")
-        log.Fatal(err)
-    }
+	cmd := exec.Command("go", "run", "server.go", strconv.Itoa(serverIndex), "&", "-r")
+	err := cmd.Run()
+	if err != nil {
+		fmt.Printf("error\n")
+		log.Fatal(err)
+	}
 }
 
 func SyncReplicas(time int64) error {
@@ -292,13 +298,13 @@ func SyncKeyLocally(keyValue KeyValue) error {
 	return nil
 }
 
-func (t *Task) SyncKey(keyValue KeyValue) error {
+func (t *Task) SyncKey(keyValue KeyValue, reply *string) error {
 	// find key in the file
 	// if found: check the updated timestamp for the key
 	// if updated timestamp > timestamp arg (do nothing)
 	// if equal ? (CASE NEEDS TO BE GIVEN A THOUGHT)
 	// else: update the key with the passed value and timestamp
-	return SyncKeyLocally(keyValue);
+	return SyncKeyLocally(keyValue)
 }
 
 //Init ... takes in config and index of the current server in config
@@ -344,7 +350,7 @@ func Init(index int, restart bool) error {
 	if err != nil {
 		log.Fatal("Error serving: ", err)
 	}
-	if(restart == true) {
+	if restart == true {
 		SyncReplicas(time)
 	}
 	return nil
@@ -356,7 +362,7 @@ func main() {
 	serverIndex, _ = strconv.Atoi(args[0])
 	var restart bool = false
 	if len(args) > 2 {
-        restart = true
-    }
-    Init(serverIndex, restart)
+		restart = true
+	}
+	Init(serverIndex, restart)
 }
