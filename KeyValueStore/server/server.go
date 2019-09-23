@@ -32,9 +32,9 @@ var config = []map[string]string{
 		"filename": "./2.txt",
 	},
 }
-var serverIndex int = 1
+var serverIndex int;
 
-var filename string = config[serverIndex]["filename"]
+var filename string;
 
 // Make a new KeyValue type that is a typed collection of fields
 // (Key and Value), both of which are of type string
@@ -106,8 +106,8 @@ func (t *Task) PutKey(keyValue KeyValuePair, oldValue *string) error {
 	*oldValue = "1234"
 	keyFound := false
 	filePath := config[serverIndex]["filename"]
-	curTimeStamp := string(time.Now().UnixNano())
-	fmt.Printf("masnmms,d")
+	curTimeStamp := strconv.FormatInt(time.Now().UnixNano(), 10)
+	fmt.Printf("time is %s", curTimeStamp)
 	fmt.Printf("hello here")
 
 	newKeyValueString := string(keyValue.Key + "," + keyValue.Value + "," + curTimeStamp)
@@ -143,6 +143,8 @@ func (t *Task) PutKey(keyValue KeyValuePair, oldValue *string) error {
 
 	fmt.Printf("here2")
 	newFileContent := strings.Join(lines[:], "\n")
+	fmt.Printf("new File content %s\n", newFileContent);
+	fmt.Printf("\nfilename is => %s\n", filename)
 	err = ioutil.WriteFile(filename, []byte(newFileContent), 0)
 	if err != nil {
 		fmt.Printf("%s ", err)
@@ -155,8 +157,8 @@ func (t *Task) PutKey(keyValue KeyValuePair, oldValue *string) error {
 			client, err := rpc.DialHTTP("tcp", config[index]["host"]+":"+config[index]["port"])
 			if err != nil {
 				// callback (check reply and restart server if there is a connection error)
-				RestartServer(index)
 				fmt.Printf("%s ", err)
+				RestartServer(index)
 			} else {
 				client.Go("Task.SyncKey", KeyValue{Key: keyValue.Key, Value: keyValue.Value, TimeStamp: curTimeStamp}, nil, nil)
 			}
@@ -168,7 +170,7 @@ func (t *Task) PutKey(keyValue KeyValuePair, oldValue *string) error {
 
 func RestartServer(serverIndex int) {
 	// here -r is for server restart
-	cmd := exec.Command("go", "run", "server.go", strconv.Itoa(serverIndex), " &", " -r")
+	cmd := exec.Command("go", "run", "server.go", strconv.Itoa(serverIndex), " -r", " &")
 	err := cmd.Start()
 	if err != nil {
 		fmt.Printf("error\n")
@@ -362,6 +364,7 @@ func main() {
 	args := os.Args[1:]
 	fmt.Printf("len %d", len(args))
 	serverIndex, _ = strconv.Atoi(args[0])
+	filename = config[serverIndex]["filename"]
 	var restart bool = false
 	if len(args) > 2 {
 		restart = true
