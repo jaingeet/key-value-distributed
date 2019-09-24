@@ -32,9 +32,9 @@ var config = []map[string]string{
 		"filename": "./2.txt",
 	},
 }
-var serverIndex int;
+var serverIndex int
 
-var filename string;
+var filename string
 
 // Make a new KeyValue type that is a typed collection of fields
 // (Key and Value), both of which are of type string
@@ -103,20 +103,13 @@ func (t *Task) PutKey(keyValue KeyValuePair, oldValue *string) error {
 	// send async requests to update the key value pair with timestamp in other replicas (if no response received
 	// in callback from the other server, reinit the server that is not up)
 
-	*oldValue = "1234"
 	keyFound := false
 	filePath := config[serverIndex]["filename"]
 	curTimeStamp := strconv.FormatInt(time.Now().UnixNano(), 10)
-	fmt.Printf("time is %s", curTimeStamp)
-	fmt.Printf("hello here")
 
 	newKeyValueString := string(keyValue.Key + "," + keyValue.Value + "," + curTimeStamp)
 
-	fmt.Printf("newKeyValue string is %s ", newKeyValueString)
-
 	fileContent, err := ioutil.ReadFile(filePath)
-
-	fmt.Printf("here1 fileContent is %s err is %s ", fileContent, err)
 
 	if err != nil {
 		log.Fatal(err)
@@ -141,17 +134,13 @@ func (t *Task) PutKey(keyValue KeyValuePair, oldValue *string) error {
 		lines = append(lines, newKeyValueString)
 	}
 
-	fmt.Printf("here2")
 	newFileContent := strings.Join(lines[:], "\n")
-	fmt.Printf("new File content %s\n", newFileContent);
-	fmt.Printf("\nfilename is => %s\n", filename)
 	err = ioutil.WriteFile(filename, []byte(newFileContent), 0)
 	if err != nil {
 		fmt.Printf("%s ", err)
 		return err
 	}
 
-	fmt.Printf("here3")
 	for index := range config {
 		if index != serverIndex {
 			client, err := rpc.DialHTTP("tcp", config[index]["host"]+":"+config[index]["port"])
@@ -252,19 +241,19 @@ func SyncKeyLocally(keyValue KeyValue) error {
 		return err
 	}
 
+	newKeyValueString := keyValue.Key + "," + keyValue.Value + "," + keyValue.TimeStamp
 	lines := strings.Split(string(data), "\n")
 	var found = false // to check if the key is present or not
 
 	var TimeInFile int64 = 0
-	var UpdatedTime int64 = 0
+	UpdatedTime, _ := strconv.ParseInt(keyValue.TimeStamp, 10, 64)
 	for i, line := range lines {
 		var array []string = strings.Split(line, ",")
 		if i != 0 {
-			TimeInFile, err = strconv.ParseInt(array[2], 10, 64)
-			UpdatedTime, err = strconv.ParseInt(keyValue.TimeStamp, 10, 64)
 			if keyValue.Key == array[0] {
+				TimeInFile, err = strconv.ParseInt(array[2], 10, 64)
 				if TimeInFile < UpdatedTime {
-					lines[i] = keyValue.Key + "," + keyValue.Value + "," + keyValue.TimeStamp
+					lines[i] = newKeyValueString
 				}
 				found = true
 				break
@@ -273,30 +262,23 @@ func SyncKeyLocally(keyValue KeyValue) error {
 	}
 
 	TimeInFile, err = strconv.ParseInt(lines[0], 10, 64)
-	UpdatedTime, err = strconv.ParseInt(keyValue.TimeStamp, 10, 64)
 
 	if TimeInFile < UpdatedTime {
 		lines[0] = strconv.FormatInt(UpdatedTime, 10)
 	}
 
-	output := strings.Join(lines, "\n")
-	err = ioutil.WriteFile(filename, []byte(output), 0644)
-	if err != nil {
-		log.Fatal(err)
-		return err
+	fmt.Println()
+
+	if !found {
+		lines = append(lines, newKeyValueString)
 	}
 
-	// if key is not found, we need to append it to data
-	if !found {
-		file, _ := os.OpenFile(filename, os.O_APPEND|os.O_WRONLY, 0644)
-		if _, err := file.Write([]byte("\n" + keyValue.Key + "," + keyValue.Value + "," + keyValue.TimeStamp)); err != nil {
-			log.Fatal(err)
-			return err
-		}
-		if err := file.Close(); err != nil {
-			log.Fatal(err)
-			return err
-		}
+	newFileContent := strings.Join(lines[:], "\n")
+	err = ioutil.WriteFile(filename, []byte(newFileContent), 0)
+
+	if err != nil {
+		fmt.Printf("%s ", err)
+		return err
 	}
 
 	return nil

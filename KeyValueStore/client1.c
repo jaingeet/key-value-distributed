@@ -22,6 +22,10 @@ int main() {
     printf("old value for key b is === %s ", oldValue);
     printf("getting key value b from the server --- %d ", kv739_get("b", oldValue));
     printf("value for key b from server is === %s ", oldValue);
+    printf("calling get function ---- %d \n", kv739_put("a", "123", oldValue));
+    printf("old value for key b is === %s ", oldValue);
+    printf("getting key value b from the server --- %d ", kv739_get("a", oldValue));
+    printf("value for key b from server is === %s ", oldValue);
 
 
     printf("calling server shutdown = %d\n", kv739_shutdown());
