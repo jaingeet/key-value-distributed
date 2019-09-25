@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <stdlib.h>
 #include "keyvalue.h"
 
 int main() {
@@ -13,16 +14,16 @@ int main() {
 
     printf("keyvalue.keyvalue_init(12,99) = %d\n", kv739_init(serverList, 3));
 
-    char* oldValue;
-    printf("calling get function ---- %d \n", kv739_put("a", "123", oldValue));
+    char* oldValue = malloc(1024);
+    printf("calling get function ---- %d \n", kv739_put("a", "523", oldValue));
     printf("old value for key a is === %s ", oldValue);
     printf("getting key value a from the server --- %d ", kv739_get("a", oldValue));
     printf("value for key a from server is === %s ", oldValue);
-    printf("calling get function ---- %d \n", kv739_put("b", "124", oldValue));
+    printf("calling get function ---- %d \n", kv739_put("b", "524", oldValue));
     printf("old value for key b is === %s ", oldValue);
     printf("getting key value b from the server --- %d ", kv739_get("b", oldValue));
     printf("value for key b from server is === %s ", oldValue);
-    printf("calling get function ---- %d \n", kv739_put("a", "123", oldValue));
+    printf("calling get function ---- %d \n", kv739_put("a", "523", oldValue));
     printf("old value for key b is === %s ", oldValue);
     printf("getting key value b from the server --- %d ", kv739_get("a", oldValue));
     printf("value for key b from server is === %s ", oldValue);
