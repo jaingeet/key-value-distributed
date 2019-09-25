@@ -102,6 +102,7 @@ func kv739_put(ckey *C.char, cvalue *C.char, coldValue *C.char) C.int {
 		if len(serverList) > 1 {
 			for index, server := range serverList {
 				if index != serverIndex {
+					fmt.Println("Retrying to establish connection with server index ", index)
 					client, err = rpc.DialHTTP("tcp", server)
 					if err == nil {
 						err := client.Call("Task.PutKey", KeyValuePair{Key: key, Value: value}, &oldValue)
