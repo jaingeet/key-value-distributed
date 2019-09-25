@@ -1,0 +1,86 @@
+Performance tests: measure the performance, as latency and throughput, for some workloads, 
+including those with different popularity distributions
+
+
+// No locking in files (need to check when this breaks)
+// Caching
+// Round Robin
+// write a daemon process that tries to create connection with every server at regular intervals. 
+// if connection is refused then restart server
+// calculate time before printing 
+
+Testcase 1:
+
+(num of clients -- variable (3,4,5,1,2,10,12)) clients (start time)
+
+1000000 requests // (this gets divided equally amongst clients --- 10000 per client const)
+
+(end time)
+
+
+Workloads: 100% write Put
+50% Put, 50% get
+100% Get (use the file used above)
+95% Get, 5% write (95% update same key, 5% garbage)
+100% Get (95% hot keys, 50% hot keys)
+
+
+clien1 put x server0
+kill server process (read from file -- line 1)
+get x from server 1 and server 2
+get from server 0 (if server 0 was up now) -- it will still return value from server 1
+
+
+Correctness tests: ensure the code does what it is supposed to (including failure/recovery), 
+consistency guarantees
+
+Testcase 2:
+
+client1: connect to server 0
+make put requests
+shutdown connection
+
+after init with another server
+start time
+for loop (make get request from server 1) unless the key is same as the put value
+when it matches becomes the end time
+and then measure the time diff
+
+TC:
+
+client1: same as above
+start time
+
+start client 2 before client1
+client2: has made a connection already with another server
+for loop (make get request from server 1) unless the key is same as the put value
+end time whenever it matches
+
+
+
+TC:
+start client 1 before client 2
+
+client1: put key x
+for loop (client 1 keeps getting unless value is y)
+end time
+
+client2: update key x to value y
+start time
+
+Failure test cases:
+
+Testcase 3:
+
+server 0 is down at start
+server1 puts x
+shutdown
+read x from server 0 (loop until you get the value)
+
+
+TC:
+
+clien1 put x server0
+kill server process (read from file -- line 1)
+get x from server 1 and server 2
+get from server 0 (if server 0 was up now) -- it will still return value from server 1
