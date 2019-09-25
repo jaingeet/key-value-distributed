@@ -1,13 +1,13 @@
 package main
 
+import "C"
+
 import (
-	"C"
-	"log"
+	"fmt"
 	"math/rand"
 	"net/rpc"
 	"unsafe"
 )
-import "fmt"
 
 var err error
 var client *rpc.Client
@@ -36,7 +36,7 @@ func kv739_init(cserverListArg **C.char, length C.int) C.int {
 	address := serverList[serverIndex]
 	client, err = rpc.DialHTTP("tcp", address)
 	if err != nil {
-		log.Fatal("Connection error: ", err)
+		fmt.Println("Connection error: ", err)
 		return C.int(-1)
 	}
 	return C.int(0)
@@ -46,7 +46,7 @@ func kv739_init(cserverListArg **C.char, length C.int) C.int {
 func kv739_shutdown() C.int {
 	err := client.Close()
 	if err != nil {
-		log.Fatal("Unable to shutdown client connection: ", err)
+		fmt.Println("Unable to shutdown client connection: ", err)
 		return C.int(-1)
 	}
 	return C.int(0)
@@ -58,7 +58,7 @@ func kv739_get(ckey *C.char, cvalue *C.char) C.int {
 	value := C.GoString(cvalue)
 	err := client.Call("Task.GetKey", key, &value)
 	if err != nil {
-		log.Fatal("Could not get key: ", key, err)
+		fmt.Println("Could not get key: ", key, err)
 		//Retry logic
 		if len(serverList) > 1 {
 			for index, server := range serverList {
@@ -69,13 +69,14 @@ func kv739_get(ckey *C.char, cvalue *C.char) C.int {
 						if err == nil {
 							serverIndex = index
 							if len(value) > 1 {
+								convertGoToString(cvalue, value)
 								return C.int(0)
 							}
 							return C.int(1)
 						}
-						log.Fatal("Unable to get key: ", key, " from server: ", server, " err: ", err)
+						fmt.Println("Unable to get key: ", key, " from server: ", server, " err: ", err)
 					} else {
-						log.Fatal("Unable to establish connection with server: ", server, err)
+						fmt.Println("Unable to establish connection with server: ", server, err)
 					}
 				}
 			}
@@ -83,6 +84,7 @@ func kv739_get(ckey *C.char, cvalue *C.char) C.int {
 		return C.int(-1)
 	}
 	if len(value) > 1 {
+		convertGoToString(cvalue, value)
 		return C.int(0)
 	}
 	return C.int(1)
@@ -95,7 +97,7 @@ func kv739_put(ckey *C.char, cvalue *C.char, coldValue *C.char) C.int {
 	oldValue := C.GoString(coldValue)
 	err := client.Call("Task.PutKey", KeyValuePair{Key: key, Value: value}, &oldValue)
 	if err != nil {
-		log.Fatal("Could not put key: ", key, " value: ", value, " err: ", err)
+		fmt.Println("Could not put key: ", key, " value: ", value, " err: ", err)
 		//TODO: Retry logic only if err contains connection
 		if len(serverList) > 1 {
 			for index, server := range serverList {
@@ -106,13 +108,14 @@ func kv739_put(ckey *C.char, cvalue *C.char, coldValue *C.char) C.int {
 						if err == nil {
 							serverIndex = index
 							if len(oldValue) > 1 {
+								convertGoToString(coldValue, oldValue)
 								return C.int(0)
 							}
 							return C.int(1)
 						}
-						log.Fatal("Unable to put key: ", key, " on server: ", server, " err: ", err)
+						fmt.Println("Unable to put key: ", key, " on server: ", server, " err: ", err)
 					} else {
-						log.Fatal("Unable to establish connection with server: ", server, err)
+						fmt.Println("Unable to establish connection with server: ", server, err)
 					}
 				}
 			}
@@ -121,9 +124,16 @@ func kv739_put(ckey *C.char, cvalue *C.char, coldValue *C.char) C.int {
 	}
 
 	if len(oldValue) > 1 {
+		convertGoToString(coldValue, oldValue)
 		return C.int(0)
 	}
 	return C.int(1)
+}
+
+func convertGoToString(coldValue *C.char, oldValue string) {
+	lenvalue := len(oldValue)
+	gData := (*[1 << 30]byte)(unsafe.Pointer(coldValue))[:lenvalue:lenvalue]
+	copy(gData[0:], oldValue)
 }
 
 func main() {
