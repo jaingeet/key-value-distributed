@@ -30,10 +30,10 @@ func kv739_init(cserverListArg **C.char, length C.int) C.int {
 	for i, s := range tmpslice {
 		serverListArg[i] = C.GoString(s)
 	}
-	fmt.Printf("serverListArg %s\n", serverListArg[0])
+	// fmt.Printf("serverListArg %s\n", serverListArg[0])
 	rand.Seed(time.Now().UnixNano())
 	serverIndex = rand.Intn(len(serverListArg))
-	fmt.Printf("server index ====> %d\n", serverIndex)
+	// fmt.Printf("server index ====> %d\n", serverIndex)
 	serverList = serverListArg
 	address := serverList[serverIndex]
 	client, err = rpc.DialHTTP("tcp", address)

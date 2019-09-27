@@ -61,7 +61,7 @@ func (t *Task) GetKey(key string, value *string) error {
 	// use cache (may be later)
 	// find the key in file and return
 	// return null if not found
-	fmt.Printf("calling getKey\n")
+	// fmt.Printf("calling getKey\n")
 	file, err := os.Open(config[serverIndex]["filename"])
 	if err != nil {
 		log.Fatal(err)
@@ -102,7 +102,7 @@ func (t *Task) PutKey(keyValue KeyValuePair, oldValue *string) error {
 	// if EOF reached append new key, value and timestamp in the end of the file
 	// send async requests to update the key value pair with timestamp in other replicas (if no response received
 	// in callback from the other server, reinit the server that is not up)
-	fmt.Printf("calling putKey\n")
+	// fmt.Printf("calling putKey\n")
 	keyFound := false
 	filePath := config[serverIndex]["filename"]
 	curTimeStamp := strconv.FormatInt(time.Now().UnixNano(), 10)
@@ -189,7 +189,7 @@ func SyncReplicas(time int64) error {
 						fmt.Println("error in syncReplica", err)
 					} else {
 						// To Do - add functionality for bulk update
-						fmt.Println("updates length ==> ", len(updates))
+						// fmt.Println("updates length ==> ", len(updates))
 						for _, update := range updates {
 							SyncKeyLocally(update)
 						}
@@ -206,7 +206,7 @@ func SyncReplicas(time int64) error {
 //GetUpdates ... to get key values updated after the timestamp
 func (t *Task) GetUpdates(timestamp int64, updates *[]KeyValue) error {
 	// return an array of all key,value and timestamp where timestamp > given timestamp
-	fmt.Println("timestamp ===> ", timestamp)
+	// fmt.Println("timestamp ===> ", timestamp)
 
 	file, err := os.Open(config[serverIndex]["filename"])
 
@@ -232,7 +232,7 @@ func (t *Task) GetUpdates(timestamp int64, updates *[]KeyValue) error {
 		}
 	}
 
-	fmt.Println("updates in getupdates ===> ", updates)
+	// fmt.Println("updates in getupdates ===> ", updates)
 
 	if err := scanner.Err(); err != nil {
 		log.Fatal(err)
@@ -276,7 +276,7 @@ func SyncKeyLocally(keyValue KeyValue) error {
 		lines[0] = strconv.FormatInt(UpdatedTime, 10)
 	}
 
-	fmt.Println()
+	// fmt.Println()
 
 	if !found {
 		lines = append(lines, newKeyValueString)
@@ -342,10 +342,10 @@ func Init(index int, restart bool) error {
 	}
 	log.Printf("Serving RPC server on port %d", config[index]["port"])
 
-	fmt.Println("restart ===> ", restart)
+	// fmt.Println("restart ===> ", restart)
 
 	if restart == true {
-		fmt.Println("calling sync replica")
+		// fmt.Println("calling sync replica")
 		SyncReplicas(time)
 	}
 
@@ -359,7 +359,7 @@ func Init(index int, restart bool) error {
 
 func main() {
 	args := os.Args[1:]
-	fmt.Printf("len %d", len(args))
+	// fmt.Printf("len %d", len(args))
 	serverIndex, _ = strconv.Atoi(args[0])
 	filename = config[serverIndex]["filename"]
 	_, err := os.Stat(filename)
