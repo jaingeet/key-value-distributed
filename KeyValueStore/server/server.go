@@ -194,13 +194,11 @@ func SyncReplicas(time int64) error {
 							SyncKeyLocally(update)
 						}
 					}
-				} (time, updates)
+				}(time, updates)
 
 			}
 		}
 	}
-
-
 
 	return nil
 }
@@ -350,7 +348,6 @@ func Init(index int, restart bool) error {
 		fmt.Println("calling sync replica")
 		SyncReplicas(time)
 	}
-
 
 	// Start accept incoming HTTP connections
 	err = http.Serve(listener, nil)
