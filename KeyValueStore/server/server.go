@@ -159,7 +159,7 @@ func (t *Task) PutKey(keyValue KeyValuePair, oldValue *string) error {
 
 func RestartServer(serverIndex int) {
 	// here -r is for server restart
-	cmd := exec.Command("go", "run", "server.go", strconv.Itoa(serverIndex), " -r", " &")
+	cmd := exec.Command("./server", strconv.Itoa(serverIndex), " -r", " &")
 	err := cmd.Start()
 	if err != nil {
 		fmt.Printf("error\n")
@@ -342,7 +342,7 @@ func Init(index int, restart bool) error {
 	}
 	log.Printf("Serving RPC server on port %d", config[index]["port"])
 
-	// fmt.Println("restart ===> ", restart)
+	//fmt.Println("restart ===> ", restart)
 
 	if restart == true {
 		// fmt.Println("calling sync replica")
@@ -359,8 +359,10 @@ func Init(index int, restart bool) error {
 
 func main() {
 	args := os.Args[1:]
-	// fmt.Printf("len %d", len(args))
+	//fmt.Printf("len %d", len(args))
 	serverIndex, _ = strconv.Atoi(args[0])
+	pid := os.Getpid();
+	fmt.Printf("Server %d starts with process id: %d\n", serverIndex, pid)
 	filename = config[serverIndex]["filename"]
 	_, err := os.Stat(filename)
 	if os.IsNotExist(err) {

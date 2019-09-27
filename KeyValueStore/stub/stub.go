@@ -41,6 +41,7 @@ func kv739_init(cserverListArg **C.char, length C.int) C.int {
 		fmt.Println("Connection error: ", err)
 		return C.int(-1)
 	}
+	fmt.Println("Dialled Http")
 	return C.int(0)
 }
 
