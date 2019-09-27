@@ -46,28 +46,6 @@ for loop (make get request from server 1) unless the key is same as the put valu
 when it matches becomes the end time
 and then measure the time diff
 
-TC:
-
-client1: same as above
-start time
-
-start client 2 before client1
-client2: has made a connection already with another server
-for loop (make get request from server 1) unless the key is same as the put value
-end time whenever it matches
-
-
-
-TC:
-start client 1 before client 2
-
-client1: put key x
-for loop (client 1 keeps getting unless value is y)
-end time
-
-client2: update key x to value y
-start time
-
 Failure test cases:
 
 Testcase 3:
@@ -84,3 +62,27 @@ clien1 put x server0
 kill server process (read from file -- line 1)
 get x from server 1 and server 2
 get from server 0 (if server 0 was up now) -- it will still return value from server 1
+
+TC:
+kill a server and check how long it takes for the server to come up
+
+
+All the below ones are same: I just need to make sure we always remain in sync
+This is more manual or can be done from python automation
+
+TC:
+empty txt file 2
+add contents to other (use a dummy text and write to file)
+bring all servers up
+check that their keys are synced (all of them)
+connect to server 2 and get keys in for loop unless their values are as expected
+
+
+TC:
+
+// Next tc
+// Also all keys are not synced up (if the 3 servers are not having the same key)
+
+
+TC:
+// all keys in the server should be synced

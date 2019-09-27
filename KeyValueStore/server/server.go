@@ -64,7 +64,7 @@ func (t *Task) GetKey(key string, value *string) error {
 	// fmt.Printf("calling getKey\n")
 	file, err := os.Open(config[serverIndex]["filename"])
 	if err != nil {
-		log.Fatal(err)
+		fmt.Println(err)
 		return err
 	}
 	defer file.Close()
@@ -86,7 +86,7 @@ func (t *Task) GetKey(key string, value *string) error {
 	}
 
 	if err := scanner.Err(); err != nil {
-		log.Fatal(err)
+		fmt.Println(err)
 		return err
 	}
 
@@ -112,7 +112,7 @@ func (t *Task) PutKey(keyValue KeyValuePair, oldValue *string) error {
 	fileContent, err := ioutil.ReadFile(filePath)
 
 	if err != nil {
-		log.Fatal(err)
+		fmt.Println(err)
 		return err
 	}
 
@@ -163,7 +163,7 @@ func RestartServer(serverIndex int) {
 	err := cmd.Start()
 	if err != nil {
 		fmt.Printf("error\n")
-		log.Fatal(err)
+		fmt.Println(err)
 	}
 	pid := cmd.Process.Pid
 	fmt.Printf("Server %d restarts with process id: %d\n", serverIndex, pid)
@@ -211,7 +211,7 @@ func (t *Task) GetUpdates(timestamp int64, updates *[]KeyValue) error {
 	file, err := os.Open(config[serverIndex]["filename"])
 
 	if err != nil {
-		log.Fatal(err)
+		fmt.Println(err)
 		return err
 	}
 	defer file.Close()
@@ -226,16 +226,18 @@ func (t *Task) GetUpdates(timestamp int64, updates *[]KeyValue) error {
 
 	for scanner.Scan() {
 		var line []string = strings.Split(scanner.Text(), ",")
-		TimestampInFile, _ := strconv.ParseInt(line[2], 10, 64)
-		if TimestampInFile >= timestamp {
-			*updates = append(*updates, KeyValue{Key: line[0], Value: line[1], TimeStamp: line[2]})
+		if len(line) == 3 {
+			TimestampInFile, _ := strconv.ParseInt(line[2], 10, 64)
+			if TimestampInFile >= timestamp {
+				*updates = append(*updates, KeyValue{Key: line[0], Value: line[1], TimeStamp: line[2]})
+			}
 		}
 	}
 
 	// fmt.Println("updates in getupdates ===> ", updates)
 
 	if err := scanner.Err(); err != nil {
-		log.Fatal(err)
+		fmt.Println(err)
 		return err
 	}
 
@@ -246,7 +248,7 @@ func SyncKeyLocally(keyValue KeyValue) error {
 
 	data, err := ioutil.ReadFile(filename)
 	if err != nil {
-		log.Fatal(err)
+		fmt.Println(err)
 		return err
 	}
 
@@ -310,7 +312,7 @@ func Init(index int, restart bool) error {
 	// Publish the receivers methods
 	err := rpc.Register(task)
 	if err != nil {
-		log.Fatal("Format of service Task isn't correct. ", err)
+		fmt.Println("Format of service Task isn't correct. ", err)
 	}
 
 	// Sync with the other server before restart
@@ -319,7 +321,7 @@ func Init(index int, restart bool) error {
 		// read the last updated timestamp (-5 seconds etc -- for failover delay) from the file
 		file, err := os.OpenFile(filename, os.O_RDONLY, 0644)
 		if err != nil {
-			log.Fatal(err)
+			fmt.Println(err)
 			return err
 		}
 		defer file.Close()
@@ -338,7 +340,7 @@ func Init(index int, restart bool) error {
 
 	listener, e := net.Listen("tcp", config[index]["host"]+":"+config[index]["port"])
 	if e != nil {
-		log.Fatal("Listen error: ", e)
+		fmt.Println("Listen error: ", e)
 	}
 	log.Printf("Serving RPC server on port %d", config[index]["port"])
 
@@ -352,7 +354,7 @@ func Init(index int, restart bool) error {
 	// Start accept incoming HTTP connections
 	err = http.Serve(listener, nil)
 	if err != nil {
-		log.Fatal("Error serving: ", err)
+		fmt.Println("Error serving: ", err)
 	}
 	return nil
 }
@@ -361,14 +363,14 @@ func main() {
 	args := os.Args[1:]
 	//fmt.Printf("len %d", len(args))
 	serverIndex, _ = strconv.Atoi(args[0])
-	pid := os.Getpid();
+	pid := os.Getpid()
 	fmt.Printf("Server %d starts with process id: %d\n", serverIndex, pid)
 	filename = config[serverIndex]["filename"]
 	_, err := os.Stat(filename)
 	if os.IsNotExist(err) {
 		_, err := os.OpenFile(filename, os.O_CREATE, 0644)
 		if err != nil {
-			log.Fatal("Failed to create file ", err)
+			fmt.Println("Failed to create file ", err)
 		}
 		curTimeStamp := strconv.FormatInt(time.Now().UnixNano(), 10)
 		ioutil.WriteFile(filename, []byte(curTimeStamp), 0)
