@@ -365,6 +365,15 @@ func main() {
 	fmt.Printf("len %d", len(args))
 	serverIndex, _ = strconv.Atoi(args[0])
 	filename = config[serverIndex]["filename"]
+	_, err := os.Stat(filename)
+	if os.IsNotExist(err) {
+		_, err := os.OpenFile(filename, os.O_CREATE, 0644)
+		if err != nil {
+			log.Fatal("Failed to create file ", err)
+		}
+		curTimeStamp := strconv.FormatInt(time.Now().UnixNano(), 10)
+		ioutil.WriteFile(filename, []byte(curTimeStamp), 0)
+	}
 	var restart bool = false
 	if len(args) > 1 {
 		restart = true
