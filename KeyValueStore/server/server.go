@@ -9,7 +9,6 @@ import (
 	"net/http"
 	"net/rpc"
 	"os"
-	"os/exec"
 	"strconv"
 	"strings"
 	"sync"
@@ -39,7 +38,6 @@ var filename string
 
 // Counter is safe to use concurrently.
 type Counter struct {
-	count   int
 	mux sync.Mutex
 }
 
@@ -55,33 +53,16 @@ type KeyValuePair struct {
 	Key, Value string
 }
 
-// TODO: Do we need this?
-type EditKeyValue struct {
-	Key, Value, OldValue string
-}
-
-//type Task int
-
 // This should be fetched from file (We need a persistent store)
 var keyValueStore []KeyValue
 
 // GetToDo takes a string type and returns a ToDo
 func (c *Counter) GetKey(key string, value *string) error {
-	//c.mux.Lock()
-	//
-	//if c.count == threshold {
-	//	c.mux.Unlock()
-	//	return errors.New("Too many Requests!!!")
-	//}
-	//c.count++
-	//c.mux.Unlock()
-	//
-	//defer releaseMutex(c)
 
 	// use cache (may be later)
 	// find the key in file and return
 	// return null if not found
-	fmt.Printf("calling getKey\n")
+	// fmt.Printf("calling getKey\n")
 	file, err := os.Open(config[serverIndex]["filename"])
 	defer file.Close()
 	if err != nil {
@@ -112,27 +93,11 @@ func (c *Counter) GetKey(key string, value *string) error {
 	return nil
 }
 
-
-
-func releaseMutex(c *Counter) {
-	c.mux.Lock()
-	c.count--
-	c.mux.Unlock()
-}
-
 //PutKey ...  TODO: can change timestamp type to Time instead of string
 func (c *Counter) PutKey(keyValue KeyValuePair, oldValue *string) error {
 
-	//c.mux.Lock()
-	//if c.count == threshold {
-	//	c.mux.Unlock()
-	//	return errors.New("Too many Requests!!!" + strconv.Itoa(c.count))
-	//}
-	//c.count++
-	//c.mux.Unlock()
-	//
-	//defer releaseMutex(c)
-
+	c.mux.Lock()
+	defer c.mux.Unlock()
 	//get file and find the given key
 	//initialise the epoch timestamp
 	// first line of the file should contain last updated timestamp
@@ -140,7 +105,7 @@ func (c *Counter) PutKey(keyValue KeyValuePair, oldValue *string) error {
 	// if EOF reached append new key, value and timestamp in the end of the file
 	// send async requests to update the key value pair with timestamp in other replicas (if no response received
 	// in callback from the other server, reinit the server that is not up)
-	fmt.Printf("calling putKey\n")
+	// fmt.Printf("calling putKey\n")
 	keyFound := false
 	filePath := config[serverIndex]["filename"]
 	curTimeStamp := strconv.FormatInt(time.Now().UnixNano(), 10)
@@ -148,7 +113,6 @@ func (c *Counter) PutKey(keyValue KeyValuePair, oldValue *string) error {
 	newKeyValueString := string(keyValue.Key + "," + keyValue.Value + "," + curTimeStamp)
 
 	fileContent, err := ioutil.ReadFile(filePath)
-
 	if err != nil {
 		fmt.Println(err)
 		return err
@@ -182,12 +146,12 @@ func (c *Counter) PutKey(keyValue KeyValuePair, oldValue *string) error {
 	for index := range config {
 		if index != serverIndex {
 			client, err := rpc.DialHTTP("tcp", config[index]["host"]+":"+config[index]["port"])
-			defer client.Close();
 			if err != nil {
 				// callback (check reply and restart server if there is a connection error)
 				fmt.Printf("%s ", err)
 				RestartServer(index)
 			} else {
+				defer client.Close()
 				client.Go("Counter.SyncKey", KeyValue{Key: keyValue.Key, Value: keyValue.Value, TimeStamp: curTimeStamp}, nil, nil)
 			}
 		}
@@ -198,14 +162,14 @@ func (c *Counter) PutKey(keyValue KeyValuePair, oldValue *string) error {
 
 func RestartServer(serverIndex int) {
 	// here -r is for server restart
-	cmd := exec.Command("./server", strconv.Itoa(serverIndex), " -r", " &")
-	err := cmd.Start()
-	if err != nil {
-		fmt.Printf("error\n")
-		fmt.Println(err)
-	}
-	pid := cmd.Process.Pid
-	fmt.Printf("Server %d restarts with process id: %d\n", serverIndex, pid)
+	// cmd := exec.Command("./server", strconv.Itoa(serverIndex), " -r", " &")
+	// err := cmd.Start()
+	// if err != nil {
+	// 	fmt.Printf("error\n")
+	// 	fmt.Println(err)
+	// }
+	// pid := cmd.Process.Pid
+	// fmt.Printf("Server %d restarts with process id: %d\n", serverIndex, pid)
 }
 
 func SyncReplicas(time int64) error {
@@ -215,27 +179,25 @@ func SyncReplicas(time int64) error {
 	var updates []KeyValue
 
 	//TODO: make a connection and an RPC Call here? (also need to get updates from all servers)
-	for index, _ := range config {
+	for index := range config {
 		if index != serverIndex {
 			client, err := rpc.DialHTTP("tcp", config[index]["host"]+":"+config[index]["port"])
-			defer client.Close();
 			if err != nil {
-				RestartServer(index)
+				// RestartServer(index)
 				//log.Fatal(err)
 			} else {
-				go func(time int64, updates []KeyValue) {
-					err := client.Call("Counter.GetUpdates", time, &updates)
-					if err != nil {
-						fmt.Println("error in syncReplica", err)
-					} else {
-						// To Do - add functionality for bulk update
-						// fmt.Println("updates length ==> ", len(updates))
-						for _, update := range updates {
-							SyncKeyLocally(update)
-						}
+				defer client.Close()
+				// fmt.Println("calling get Updates ++++++++++++++++++++++ ")
+				err := client.Call("Counter.GetUpdates", time, &updates)
+				if err != nil {
+					fmt.Println("error in syncReplica", err)
+				} else {
+					// To Do - add functionality for bulk update
+					// fmt.Println("updates length ==> ", len(updates))
+					for _, update := range updates {
+						SyncKeyLocally(update)
 					}
-				}(time, updates)
-
+				}
 			}
 		}
 	}
@@ -246,12 +208,12 @@ func SyncReplicas(time int64) error {
 //GetUpdates ... to get key values updated after the timestamp
 func (c *Counter) GetUpdates(timestamp int64, updates *[]KeyValue) error {
 	// return an array of all key,value and timestamp where timestamp > given timestamp
-	// fmt.Println("timestamp ===> ", timestamp)
+	// fmt.Println("get updates timestamp ===> ", timestamp)
 
 	file, err := os.Open(config[serverIndex]["filename"])
 	defer file.Close()
 	if err != nil {
-		fmt.Println(err)
+		fmt.Println("err 1", err)
 		return err
 	}
 
@@ -273,10 +235,10 @@ func (c *Counter) GetUpdates(timestamp int64, updates *[]KeyValue) error {
 		}
 	}
 
-	// fmt.Println("updates in getupdates ===> ", updates)
+	// fmt.Println("updates in getupdates ===> ", len(*updates))
 
 	if err := scanner.Err(); err != nil {
-		fmt.Println(err)
+		fmt.Println("err 2", err)
 		return err
 	}
 
@@ -284,6 +246,7 @@ func (c *Counter) GetUpdates(timestamp int64, updates *[]KeyValue) error {
 }
 
 func SyncKeyLocally(keyValue KeyValue) error {
+	newKeyValueString := keyValue.Key + "," + keyValue.Value + "," + keyValue.TimeStamp
 
 	data, err := ioutil.ReadFile(filename)
 	if err != nil {
@@ -291,7 +254,6 @@ func SyncKeyLocally(keyValue KeyValue) error {
 		return err
 	}
 
-	newKeyValueString := keyValue.Key + "," + keyValue.Value + "," + keyValue.TimeStamp
 	lines := strings.Split(string(data), "\n")
 	var found = false // to check if the key is present or not
 
@@ -311,6 +273,10 @@ func SyncKeyLocally(keyValue KeyValue) error {
 		}
 	}
 
+	if !found {
+		lines = append(lines, newKeyValueString)
+	}
+
 	TimeInFile, err = strconv.ParseInt(lines[0], 10, 64)
 
 	if TimeInFile < UpdatedTime {
@@ -319,9 +285,7 @@ func SyncKeyLocally(keyValue KeyValue) error {
 
 	// fmt.Println()
 
-	if !found {
-		lines = append(lines, newKeyValueString)
-	}
+	// fmt.Println("Num Lines ", strconv.Itoa(len(lines)))
 
 	newFileContent := strings.Join(lines[:], "\n")
 	err = ioutil.WriteFile(filename, []byte(newFileContent), 0)
@@ -340,15 +304,19 @@ func (c *Counter) SyncKey(keyValue KeyValue, reply *string) error {
 	// if updated timestamp > timestamp arg (do nothing)
 	// if equal ? (CASE NEEDS TO BE GIVEN A THOUGHT)
 	// else: update the key with the passed value and timestamp
-	return SyncKeyLocally(keyValue)
+
+	// fmt.Println("calling synckey")
+	c.mux.Lock()
+	defer c.mux.Unlock()
+	SyncKeyLocally(keyValue)
+	return nil
 }
 
 //Init ... takes in config and index of the current server in config
 func Init(index int, restart bool) error {
 	// create file and add first line if not already present
 	// sync after all servers are up
-	c := Counter{count: 0}
-	//task := new(Task)
+	c := Counter{}
 	// Publish the receivers methods
 	err := rpc.Register(&c)
 	if err != nil {
@@ -371,7 +339,7 @@ func Init(index int, restart bool) error {
 
 		var timestamp string = scanner.Text()
 		time, err = strconv.ParseInt(timestamp, 10, 64)
-		time = time - 5*1000
+		time = time - 20*1000*60*1000*1000 // 20 minutes
 	}
 
 	// Register a HTTP handler
@@ -388,10 +356,12 @@ func Init(index int, restart bool) error {
 
 	if restart == true {
 		// fmt.Println("calling sync replica")
+		// fmt.Println("Calling Sync replicas =======================")
 		err = SyncReplicas(time)
 	}
 
 	// Start accept incoming HTTP connections
+	// fmt.Println("Listening on the port ------------------------ ")
 	err = http.Serve(listener, nil)
 	if err != nil {
 		fmt.Println("Error serving: ", err)
@@ -408,7 +378,7 @@ func main() {
 	filename = config[serverIndex]["filename"]
 	_, err := os.Stat(filename)
 	if os.IsNotExist(err) {
-		fmt.Println("creating new file", filename);
+		// fmt.Println("creating new file", filename)
 		_, err := os.OpenFile(filename, os.O_CREATE, 0644)
 		if err != nil {
 			fmt.Println("Failed to create file ", err)

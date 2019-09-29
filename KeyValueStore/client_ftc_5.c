@@ -1,17 +1,30 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <time.h>
 #include <unistd.h>
 #include <pthread.h>
 #include "keyvalue.h"
 
+// To test if all servers are in a sync state if one of the servers goes down 
+// in the middle and then is revived automatically after sometime
+
+//TODO: in script empty the txt files restart the server and pass server 1 index PID here
+
 struct arg_struct {
     int start_key;
     int end_key;
+    char *server_address;
+};
+
+char *serverList[] = {
+    "localhost:8001",
+    "localhost:8002",
+    "localhost:8003",
+    NULL
 };
 
 // 100% write - Put number_of_keys using a multiple client
-// Multi-threading doesn't work because the stub is over-written
-// Made 3 client processes instead in client_ptc_6_a.c, client_ptc_6_b.c, client_ptc_6_c.c
+
 // The function to be executed by all threads
 void *putKeys(void *arguments)
 {
@@ -19,21 +32,25 @@ void *putKeys(void *arguments)
     int start_key = args->start_key;
     int end_key = args->end_key;
     printf("start, end is %d, %d\n", start_key, end_key);
-	char *serverList[] = {
-       "localhost:8001",
-       "localhost:8002",
-       "localhost:8003",
-       NULL
+
+    char *server_list[] = {
+        args->server_address,
+        NULL
     };
+
     char* oldValue = malloc(1024);
 
-    printf("Calling init %d \n", kv739_init(serverList, 3));
+    printf("Calling init %d \n", kv739_init(server_list, 1));
 
     for(int i = start_key; i < end_key; i++) {
         printf("key is, %d\n", i);
         char str[12];
         sprintf(str, "%d", i);
         kv739_put(str, str, oldValue);
+        // if (i == 500) {
+        //     char* kill_pid = "kill -9 3564";
+        //     system(kill_pid);
+        // }
     }
     return NULL;
 }
@@ -53,6 +70,7 @@ int main()
 	for (int i = 0; i < num_of_threads; i++) {
 	    args[i].start_key = start_key;
         args[i].end_key = start_key + per_client_keys;
+        args[i].server_address = serverList[i];
 	    printf("start, per_client_keys is %d, %d\n", args[i].start_key, args[i].end_key);
 		pthread_create(&threads[i], NULL, putKeys, (void *)&args[i]);
 		start_key += per_client_keys;

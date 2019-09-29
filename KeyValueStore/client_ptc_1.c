@@ -28,7 +28,7 @@ int main() {
         char str[12];
         sprintf(str, "%d", i);
         kv739_put(str, str, oldValue);
-        usleep(500);
+        // usleep(5000);
     }
     end_time = time(0);
 
