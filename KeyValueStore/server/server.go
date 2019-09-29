@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -12,6 +13,7 @@ import (
 	"os/exec"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -36,6 +38,14 @@ var serverIndex int
 
 var filename string
 
+// Counter is safe to use concurrently.
+type Counter struct {
+	count   int
+	mux sync.Mutex
+}
+
+var threshold = 500
+
 // Make a new KeyValue type that is a typed collection of fields
 // (Key and Value), both of which are of type string
 type KeyValue struct {
@@ -51,23 +61,34 @@ type EditKeyValue struct {
 	Key, Value, OldValue string
 }
 
-type Task int
+//type Task int
 
 // This should be fetched from file (We need a persistent store)
 var keyValueStore []KeyValue
 
 // GetToDo takes a string type and returns a ToDo
-func (t *Task) GetKey(key string, value *string) error {
+func (c *Counter) GetKey(key string, value *string) error {
+	c.mux.Lock()
+
+	if c.count == threshold {
+		c.mux.Unlock()
+		return errors.New("Too many Requests!!!")
+	}
+	c.count++
+	c.mux.Unlock()
+
+	defer releaseMutex(c)
+
 	// use cache (may be later)
 	// find the key in file and return
 	// return null if not found
-	// fmt.Printf("calling getKey\n")
+	fmt.Printf("calling getKey\n")
 	file, err := os.Open(config[serverIndex]["filename"])
+	defer file.Close()
 	if err != nil {
 		fmt.Println(err)
 		return err
 	}
-	defer file.Close()
 
 	scanner := bufio.NewScanner(file)
 
@@ -89,12 +110,30 @@ func (t *Task) GetKey(key string, value *string) error {
 		fmt.Println(err)
 		return err
 	}
-
 	return nil
 }
 
+
+
+func releaseMutex(c *Counter) {
+	c.mux.Lock()
+	c.count--
+	c.mux.Unlock()
+}
+
 //PutKey ...  TODO: can change timestamp type to Time instead of string
-func (t *Task) PutKey(keyValue KeyValuePair, oldValue *string) error {
+func (c *Counter) PutKey(keyValue KeyValuePair, oldValue *string) error {
+
+	c.mux.Lock()
+	if c.count == threshold {
+		c.mux.Unlock()
+		return errors.New("Too many Requests!!!" + strconv.Itoa(c.count))
+	}
+	c.count++
+	c.mux.Unlock()
+
+	defer releaseMutex(c)
+
 	//get file and find the given key
 	//initialise the epoch timestamp
 	// first line of the file should contain last updated timestamp
@@ -102,7 +141,7 @@ func (t *Task) PutKey(keyValue KeyValuePair, oldValue *string) error {
 	// if EOF reached append new key, value and timestamp in the end of the file
 	// send async requests to update the key value pair with timestamp in other replicas (if no response received
 	// in callback from the other server, reinit the server that is not up)
-	// fmt.Printf("calling putKey\n")
+	fmt.Printf("calling putKey\n")
 	keyFound := false
 	filePath := config[serverIndex]["filename"]
 	curTimeStamp := strconv.FormatInt(time.Now().UnixNano(), 10)
@@ -149,7 +188,7 @@ func (t *Task) PutKey(keyValue KeyValuePair, oldValue *string) error {
 				fmt.Printf("%s ", err)
 				RestartServer(index)
 			} else {
-				client.Go("Task.SyncKey", KeyValue{Key: keyValue.Key, Value: keyValue.Value, TimeStamp: curTimeStamp}, nil, nil)
+				client.Go("Counter.SyncKey", KeyValue{Key: keyValue.Key, Value: keyValue.Value, TimeStamp: curTimeStamp}, nil, nil)
 			}
 		}
 	}
@@ -184,7 +223,7 @@ func SyncReplicas(time int64) error {
 				//log.Fatal(err)
 			} else {
 				go func(time int64, updates []KeyValue) {
-					err := client.Call("Task.GetUpdates", time, &updates)
+					err := client.Call("Counter.GetUpdates", time, &updates)
 					if err != nil {
 						fmt.Println("error in syncReplica", err)
 					} else {
@@ -204,17 +243,16 @@ func SyncReplicas(time int64) error {
 }
 
 //GetUpdates ... to get key values updated after the timestamp
-func (t *Task) GetUpdates(timestamp int64, updates *[]KeyValue) error {
+func (c *Counter) GetUpdates(timestamp int64, updates *[]KeyValue) error {
 	// return an array of all key,value and timestamp where timestamp > given timestamp
 	// fmt.Println("timestamp ===> ", timestamp)
 
 	file, err := os.Open(config[serverIndex]["filename"])
-
+	defer file.Close()
 	if err != nil {
 		fmt.Println(err)
 		return err
 	}
-	defer file.Close()
 
 	scanner := bufio.NewScanner(file)
 
@@ -295,7 +333,7 @@ func SyncKeyLocally(keyValue KeyValue) error {
 	return nil
 }
 
-func (t *Task) SyncKey(keyValue KeyValue, reply *string) error {
+func (c *Counter) SyncKey(keyValue KeyValue, reply *string) error {
 	// find key in the file
 	// if found: check the updated timestamp for the key
 	// if updated timestamp > timestamp arg (do nothing)
@@ -308,9 +346,10 @@ func (t *Task) SyncKey(keyValue KeyValue, reply *string) error {
 func Init(index int, restart bool) error {
 	// create file and add first line if not already present
 	// sync after all servers are up
-	task := new(Task)
+	c := Counter{count: 0}
+	//task := new(Task)
 	// Publish the receivers methods
-	err := rpc.Register(task)
+	err := rpc.Register(&c)
 	if err != nil {
 		fmt.Println("Format of service Task isn't correct. ", err)
 	}
@@ -320,11 +359,11 @@ func Init(index int, restart bool) error {
 	if restart == true {
 		// read the last updated timestamp (-5 seconds etc -- for failover delay) from the file
 		file, err := os.OpenFile(filename, os.O_RDONLY, 0644)
+		defer file.Close()
 		if err != nil {
 			fmt.Println(err)
 			return err
 		}
-		defer file.Close()
 
 		scanner := bufio.NewScanner(file)
 		scanner.Scan()
@@ -348,7 +387,7 @@ func Init(index int, restart bool) error {
 
 	if restart == true {
 		// fmt.Println("calling sync replica")
-		SyncReplicas(time)
+		err = SyncReplicas(time)
 	}
 
 	// Start accept incoming HTTP connections
@@ -368,16 +407,17 @@ func main() {
 	filename = config[serverIndex]["filename"]
 	_, err := os.Stat(filename)
 	if os.IsNotExist(err) {
+		fmt.Println("creating new file", filename);
 		_, err := os.OpenFile(filename, os.O_CREATE, 0644)
 		if err != nil {
 			fmt.Println("Failed to create file ", err)
 		}
 		curTimeStamp := strconv.FormatInt(time.Now().UnixNano(), 10)
-		ioutil.WriteFile(filename, []byte(curTimeStamp), 0)
+		err = ioutil.WriteFile(filename, []byte(curTimeStamp), 0)
 	}
 	var restart bool = false
 	if len(args) > 1 {
 		restart = true
 	}
-	Init(serverIndex, restart)
+	err = Init(serverIndex, restart)
 }

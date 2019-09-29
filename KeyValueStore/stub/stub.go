@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"math/rand"
 	"net/rpc"
+	"regexp"
 	"time"
 	"unsafe"
 )
@@ -59,30 +60,33 @@ func kv739_shutdown() C.int {
 func kv739_get(ckey *C.char, cvalue *C.char) C.int {
 	key := C.GoString(ckey)
 	value := C.GoString(cvalue)
-	err := client.Call("Task.GetKey", key, &value)
+	err := client.Call("Counter.GetKey", key, &value)
 	if err != nil {
-		fmt.Println("Could not get key: ", key, err)
-		//Retry logic
-		if len(serverList) > 1 {
-			for index, server := range serverList {
-				if index != serverIndex {
-					client, err = rpc.DialHTTP("tcp", server)
-					if err == nil {
-						err := client.Call("Task.GetKey", key, &value)
+		if match, _ := regexp.MatchString(".*connection.*", err.Error()); match {
+			//Retry logic
+			if len(serverList) > 1 {
+				for index, server := range serverList {
+					if index != serverIndex {
+						client, err = rpc.DialHTTP("tcp", server)
 						if err == nil {
-							serverIndex = index
-							if len(value) > 1 {
-								convertGoToString(cvalue, value)
-								return C.int(0)
+							err := client.Call("Counter.GetKey", key, &value)
+							if err == nil {
+								serverIndex = index
+								if len(value) > 1 {
+									convertGoToString(cvalue, value)
+									return C.int(0)
+								}
+								return C.int(1)
 							}
-							return C.int(1)
+							fmt.Println("Unable to get key: ", key, " from server: ", server, " err: ", err)
+						} else {
+							fmt.Println("Unable to establish connection with server: ", server, err)
 						}
-						fmt.Println("Unable to get key: ", key, " from server: ", server, " err: ", err)
-					} else {
-						fmt.Println("Unable to establish connection with server: ", server, err)
 					}
 				}
 			}
+		} else {
+			fmt.Println("Could not get key: ", key, err)
 		}
 		return C.int(-1)
 	}
@@ -98,32 +102,35 @@ func kv739_put(ckey *C.char, cvalue *C.char, coldValue *C.char) C.int {
 	key := C.GoString(ckey)
 	value := C.GoString(cvalue)
 	oldValue := C.GoString(coldValue)
-	err := client.Call("Task.PutKey", KeyValuePair{Key: key, Value: value}, &oldValue)
+	err := client.Call("Counter.PutKey", KeyValuePair{Key: key, Value: value}, &oldValue)
 	if err != nil {
-		fmt.Println("Could not put key: ", key, " value: ", value, " err: ", err)
-		//TODO: Retry logic only if err contains connection
-		if len(serverList) > 1 {
-			for index, server := range serverList {
-				if index != serverIndex {
-					fmt.Println("Retrying to establish connection with server index ", index)
-					client, err = rpc.DialHTTP("tcp", server)
-					if err == nil {
-						err := client.Call("Task.PutKey", KeyValuePair{Key: key, Value: value}, &oldValue)
+		if match, _ := regexp.MatchString(".*connection.*", err.Error()); match {
+			if len(serverList) > 1 {
+				for index, server := range serverList {
+					if index != serverIndex {
+						fmt.Println("Retrying to establish connection with server index ", index)
+						client, err = rpc.DialHTTP("tcp", server)
 						if err == nil {
-							serverIndex = index
-							if len(oldValue) > 1 {
-								convertGoToString(coldValue, oldValue)
-								return C.int(0)
+							err := client.Call("Counter.PutKey", KeyValuePair{Key: key, Value: value}, &oldValue)
+							if err == nil {
+								serverIndex = index
+								if len(oldValue) > 1 {
+									convertGoToString(coldValue, oldValue)
+									return C.int(0)
+								}
+								return C.int(1)
 							}
-							return C.int(1)
+							fmt.Println("Unable to put key: ", key, " on server: ", server, " err: ", err)
+						} else {
+							fmt.Println("Unable to establish connection with server: ", server, err)
 						}
-						fmt.Println("Unable to put key: ", key, " on server: ", server, " err: ", err)
-					} else {
-						fmt.Println("Unable to establish connection with server: ", server, err)
 					}
 				}
 			}
+		} else {
+			fmt.Println("Could not put key: ", key, " value: ", value, " err: ", err)
 		}
+
 		return C.int(-1)
 	}
 
