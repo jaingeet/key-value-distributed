@@ -2,7 +2,6 @@ package main
 
 import (
 	"bufio"
-	"errors"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -68,16 +67,16 @@ var keyValueStore []KeyValue
 
 // GetToDo takes a string type and returns a ToDo
 func (c *Counter) GetKey(key string, value *string) error {
-	c.mux.Lock()
-
-	if c.count == threshold {
-		c.mux.Unlock()
-		return errors.New("Too many Requests!!!")
-	}
-	c.count++
-	c.mux.Unlock()
-
-	defer releaseMutex(c)
+	//c.mux.Lock()
+	//
+	//if c.count == threshold {
+	//	c.mux.Unlock()
+	//	return errors.New("Too many Requests!!!")
+	//}
+	//c.count++
+	//c.mux.Unlock()
+	//
+	//defer releaseMutex(c)
 
 	// use cache (may be later)
 	// find the key in file and return
@@ -124,15 +123,15 @@ func releaseMutex(c *Counter) {
 //PutKey ...  TODO: can change timestamp type to Time instead of string
 func (c *Counter) PutKey(keyValue KeyValuePair, oldValue *string) error {
 
-	c.mux.Lock()
-	if c.count == threshold {
-		c.mux.Unlock()
-		return errors.New("Too many Requests!!!" + strconv.Itoa(c.count))
-	}
-	c.count++
-	c.mux.Unlock()
-
-	defer releaseMutex(c)
+	//c.mux.Lock()
+	//if c.count == threshold {
+	//	c.mux.Unlock()
+	//	return errors.New("Too many Requests!!!" + strconv.Itoa(c.count))
+	//}
+	//c.count++
+	//c.mux.Unlock()
+	//
+	//defer releaseMutex(c)
 
 	//get file and find the given key
 	//initialise the epoch timestamp
@@ -183,6 +182,7 @@ func (c *Counter) PutKey(keyValue KeyValuePair, oldValue *string) error {
 	for index := range config {
 		if index != serverIndex {
 			client, err := rpc.DialHTTP("tcp", config[index]["host"]+":"+config[index]["port"])
+			defer client.Close();
 			if err != nil {
 				// callback (check reply and restart server if there is a connection error)
 				fmt.Printf("%s ", err)
