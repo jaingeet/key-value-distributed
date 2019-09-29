@@ -19,12 +19,15 @@ int main() {
     time_t start_time, end_time;
     char* oldValue = malloc(1024);
     printf("Calling init %d \n", kv739_init(serverList, 3));
-
-    kv739_put("123", "123", oldValue);
+    for(int i = 0; i < number_of_keys; i++) {
+        char str[12];
+        sprintf(str, "%d", i);
+        kv739_put(str, str, oldValue);
+    }
 
     start_time = time(0);
     for(int i = 0; i < number_of_keys; i++) {
-        kv739_get("123", oldValue);
+        kv739_get("9999", oldValue);
         printf("get key ===> %s\n", oldValue);
     }
     end_time = time(0);
