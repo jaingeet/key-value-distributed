@@ -7,6 +7,7 @@
 struct arg_struct {
     int start_key;
     int end_key;
+    char* server_address;
 };
 
 // 100% write - Put number_of_keys using a multiple client
@@ -18,15 +19,13 @@ void *putKeys(void *arguments)
     int start_key = args->start_key;
     int end_key = args->end_key;
     printf("start, end is %d, %d\n", start_key, end_key);
-	char *serverList[] = {
-       "localhost:8001",
-       "localhost:8002",
-       "localhost:8003",
-       NULL
-    };
+	char *server_list[] = {
+	    args->server_address,
+	    NULL
+	};
     char* oldValue = malloc(1024);
 
-    printf("Calling init %d \n", kv739_init(serverList, 3));
+    printf("Calling init %d \n", kv739_init(server_list, 1));
 
     for(int i = start_key; i < end_key; i++) {
         printf("key is, %d\n", i);
@@ -37,10 +36,17 @@ void *putKeys(void *arguments)
     return NULL;
 }
 
+char *serverList[] = {
+   "localhost:8001",
+   "localhost:8002",
+   "localhost:8003",
+   NULL
+};
+
 int main()
 {
 	int num_of_threads = 3;
-	int number_of_keys = 1000000;
+	int number_of_keys = 10000;
 	int start_key = 0;
 	int per_client_keys = number_of_keys/num_of_threads;
 	time_t start_time, end_time;
@@ -52,6 +58,7 @@ int main()
 	for (int i = 0; i < num_of_threads; i++) {
 	    args[i].start_key = start_key;
         args[i].end_key = start_key + per_client_keys;
+        args[i].server_address = serverList[i];
 	    printf("start, per_client_keys is %d, %d\n", args[i].start_key, args[i].end_key);
 		pthread_create(&threads[i], NULL, putKeys, (void *)&args[i]);
 		start_key += per_client_keys;

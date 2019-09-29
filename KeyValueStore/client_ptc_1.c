@@ -24,11 +24,12 @@ int main() {
     printf("Calling init %d \n", kv739_init(serverList, 2));
 
     for(int i = 0; i < number_of_keys; i++) {
-        printf("%d\n", i);
         char str[12];
         sprintf(str, "%d", i);
         kv739_put(str, str, oldValue);
-        usleep(500);
+        if(i%100 == 0) {
+            printf("%d\n", i);
+        }
     }
     end_time = time(0);
 

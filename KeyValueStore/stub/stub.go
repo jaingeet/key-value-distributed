@@ -34,9 +34,10 @@ func kv739_init(cserverListArg **C.char, length C.int) C.int {
 	// fmt.Printf("serverListArg %s\n", serverListArg[0])
 	rand.Seed(time.Now().UnixNano())
 	serverIndex = rand.Intn(len(serverListArg))
-	// fmt.Printf("server index ====> %d\n", serverIndex)
+	fmt.Printf("server index ====> %d\n", serverIndex)
 	serverList = serverListArg
 	address := serverList[serverIndex]
+	fmt.Println("Server address ===> ", address)
 	client, err = rpc.DialHTTP("tcp", address)
 	if err != nil {
 		fmt.Println("Connection error: ", err)

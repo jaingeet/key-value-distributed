@@ -16,6 +16,86 @@ import (
 	"time"
 )
 
+type DLinkedList struct {
+	val  string
+	key  string
+	prev *DLinkedList
+	next *DLinkedList
+}
+
+type LRUCache struct {
+	capacity int
+	head     *DLinkedList
+	tail     *DLinkedList
+	cache    map[string]*DLinkedList
+}
+
+func (lru *LRUCache) Init(cap int) {
+	fmt.Println("calling constructor")
+	lru.capacity = cap
+	lru.cache = make(map[string]*DLinkedList)
+}
+
+func (c *LRUCache) Get(key string) string {
+	l, ok := c.cache[key]
+	if !ok {
+		return ""
+	}
+	c.removeFromChain(l)
+	c.addToChain(l)
+	return l.val
+}
+
+func (c *LRUCache) Put(key string, value string) {
+	l, ok := c.cache[key]
+	if !ok {
+		l = &DLinkedList{val: value, key: key}
+		c.cache[key] = l
+	} else {
+		l.val = value
+		c.removeFromChain(l)
+	}
+
+	c.addToChain(l)
+	if len(c.cache) > c.capacity {
+		l = c.tail
+		if l != nil {
+			c.removeFromChain(l)
+			delete(c.cache, l.key)
+		}
+	}
+}
+
+func (c *LRUCache) addToChain(l *DLinkedList) {
+	l.prev = nil
+	l.next = c.head
+	if l.next != nil {
+		l.next.prev = l
+	}
+	c.head = l
+	if c.tail == nil {
+		c.tail = l
+	}
+}
+
+func (c *LRUCache) removeFromChain(l *DLinkedList) {
+	if l == c.head {
+		c.head = l.next
+	}
+
+	if l == c.tail {
+		c.tail = l.prev
+	}
+
+	if l.next != nil {
+		l.next.prev = l.prev
+	}
+
+	if l.prev != nil {
+		l.prev.next = l.next
+	}
+}
+
 var config = []map[string]string{
 	{
 		"port":     "8001",
@@ -35,15 +115,16 @@ var config = []map[string]string{
 }
 var serverIndex int
 
+var lru *LRUCache
+
 var filename string
 
 // Counter is safe to use concurrently.
 type Counter struct {
-	count   int
 	mux sync.Mutex
 }
 
-var threshold = 500
+var lruCapacity = 1000
 
 // Make a new KeyValue type that is a typed collection of fields
 // (Key and Value), both of which are of type string
@@ -60,28 +141,27 @@ type EditKeyValue struct {
 	Key, Value, OldValue string
 }
 
-//type Task int
-
 // This should be fetched from file (We need a persistent store)
 var keyValueStore []KeyValue
 
 // GetToDo takes a string type and returns a ToDo
 func (c *Counter) GetKey(key string, value *string) error {
-	//c.mux.Lock()
-	//
-	//if c.count == threshold {
-	//	c.mux.Unlock()
-	//	return errors.New("Too many Requests!!!")
-	//}
-	//c.count++
-	//c.mux.Unlock()
-	//
-	//defer releaseMutex(c)
+
 
 	// use cache (may be later)
 	// find the key in file and return
 	// return null if not found
 	fmt.Printf("calling getKey\n")
+
+	val := lru.Get(key)
+	if val != "" {
+		*value = val;
+		fmt.Printf("cache hit\n")
+		return nil;
+	}
+
+	fmt.Printf("cache miss\n")
+
 	file, err := os.Open(config[serverIndex]["filename"])
 	defer file.Close()
 	if err != nil {
@@ -101,6 +181,7 @@ func (c *Counter) GetKey(key string, value *string) error {
 		var line []string = strings.Split(scanner.Text(), ",")
 		if line[0] == key {
 			*value = line[1]
+			lru.Put(key, *value)
 			return nil
 		}
 	}
@@ -114,16 +195,18 @@ func (c *Counter) GetKey(key string, value *string) error {
 
 
 
-func releaseMutex(c *Counter) {
-	c.mux.Lock()
-	c.count--
-	c.mux.Unlock()
-}
+//func releaseMutex(c *Counter) {
+//	c.mux.Lock()
+//	c.count--
+//	c.mux.Unlock()
+//}
 
 //PutKey ...  TODO: can change timestamp type to Time instead of string
 func (c *Counter) PutKey(keyValue KeyValuePair, oldValue *string) error {
 
-	//c.mux.Lock()
+	c.mux.Lock()
+	defer c.mux.Unlock()
+
 	//if c.count == threshold {
 	//	c.mux.Unlock()
 	//	return errors.New("Too many Requests!!!" + strconv.Itoa(c.count))
@@ -178,6 +261,8 @@ func (c *Counter) PutKey(keyValue KeyValuePair, oldValue *string) error {
 		fmt.Printf("%s ", err)
 		return err
 	}
+
+	lru.Put(keyValue.Key, keyValue.Value)
 
 	for index := range config {
 		if index != serverIndex {
@@ -340,14 +425,22 @@ func (c *Counter) SyncKey(keyValue KeyValue, reply *string) error {
 	// if updated timestamp > timestamp arg (do nothing)
 	// if equal ? (CASE NEEDS TO BE GIVEN A THOUGHT)
 	// else: update the key with the passed value and timestamp
-	return SyncKeyLocally(keyValue)
+	c.mux.Lock();
+	defer c.mux.Unlock();
+	SyncKeyLocally(keyValue)
+	return nil
 }
 
 //Init ... takes in config and index of the current server in config
 func Init(index int, restart bool) error {
 	// create file and add first line if not already present
 	// sync after all servers are up
-	c := Counter{count: 0}
+
+	a := new(LRUCache)
+	a.Init(lruCapacity)
+	lru = a
+
+	c := Counter{}
 	//task := new(Task)
 	// Publish the receivers methods
 	err := rpc.Register(&c)
