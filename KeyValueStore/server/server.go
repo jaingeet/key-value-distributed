@@ -218,6 +218,7 @@ func SyncReplicas(time int64) error {
 	for index, _ := range config {
 		if index != serverIndex {
 			client, err := rpc.DialHTTP("tcp", config[index]["host"]+":"+config[index]["port"])
+			defer client.Close();
 			if err != nil {
 				RestartServer(index)
 				//log.Fatal(err)
