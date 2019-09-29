@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <time.h>
 #include "keyvalue.h"
+#include<string.h>
 
 // To test the time taken for the key update to propagate to another server
 //TODO: in script empty the files from second line onwards
@@ -44,7 +45,8 @@ int main() {
     time_t start_time, end_time;
 
     start_time = time(0);
-    while(*oldValue != *key) {
+
+    while(strcmp(oldValue, key) != 0) {
         kv739_get("a", oldValue);
     }
     end_time = time(0);
