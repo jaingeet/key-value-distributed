@@ -142,19 +142,13 @@ var keyValueStore []KeyValue
 // GetToDo takes a string type and returns a ToDo
 func (c *Counter) GetKey(key string, value *string) error {
 
-	// use cache (may be later)
 	// find the key in file and return
 	// return null if not found
-	fmt.Printf("calling getKey\n")
-
 	val := lru.Get(key)
 	if val != "" {
 		*value = val
-		fmt.Printf("cache hit\n")
 		return nil
 	}
-
-	fmt.Printf("cache miss\n")
 
 	file, err := os.Open(config[serverIndex]["filename"])
 	defer file.Close()
@@ -199,7 +193,7 @@ func (c *Counter) PutKey(keyValue KeyValuePair, oldValue *string) error {
 	// if EOF reached append new key, value and timestamp in the end of the file
 	// send async requests to update the key value pair with timestamp in other replicas (if no response received
 	// in callback from the other server, reinit the server that is not up)
-	// fmt.Printf("calling putKey\n")
+
 	keyFound := false
 	filePath := config[serverIndex]["filename"]
 	curTimeStamp := strconv.FormatInt(time.Now().UnixNano(), 10)
@@ -283,13 +277,11 @@ func SyncReplicas(time int64) error {
 				//log.Fatal(err)
 			} else {
 				defer client.Close()
-				// fmt.Println("calling get Updates ++++++++++++++++++++++ ")
 				err := client.Call("Counter.GetUpdates", time, &updates)
 				if err != nil {
 					fmt.Println("error in syncReplica", err)
 				} else {
 					// To Do - add functionality for bulk update
-					// fmt.Println("updates length ==> ", len(updates))
 					for _, update := range updates {
 						SyncKeyLocally(update)
 					}
@@ -316,7 +308,6 @@ func (c *Counter) GetUpdates(timestamp int64, updates *[]KeyValue) error {
 	scanner := bufio.NewScanner(file)
 
 	// Ignore the first line as it contains the last updated time
-
 	if scanner.Scan() {
 		scanner.Text()
 	}
@@ -330,8 +321,6 @@ func (c *Counter) GetUpdates(timestamp int64, updates *[]KeyValue) error {
 			}
 		}
 	}
-
-	// fmt.Println("updates in getupdates ===> ", len(*updates))
 
 	if err := scanner.Err(); err != nil {
 		fmt.Println("err 2", err)
@@ -379,10 +368,6 @@ func SyncKeyLocally(keyValue KeyValue) error {
 		lines[0] = strconv.FormatInt(UpdatedTime, 10)
 	}
 
-	// fmt.Println()
-
-	// fmt.Println("Num Lines ", strconv.Itoa(len(lines)))
-
 	newFileContent := strings.Join(lines[:], "\n")
 	err = ioutil.WriteFile(filename, []byte(newFileContent), 0)
 
@@ -401,7 +386,6 @@ func (c *Counter) SyncKey(keyValue KeyValue, reply *string) error {
 	// if equal ? (CASE NEEDS TO BE GIVEN A THOUGHT)
 	// else: update the key with the passed value and timestamp
 
-	// fmt.Println("calling synckey")
 	c.mux.Lock()
 	defer c.mux.Unlock()
 	SyncKeyLocally(keyValue)
@@ -443,22 +427,17 @@ func Init(index int, restart bool) error {
 
 	// Register a HTTP handler
 	rpc.HandleHTTP()
-	// Listen to TPC connections on port 1234
 
+	// Listen to TPC connections on port 1234
 	listener, e := net.Listen("tcp", config[index]["host"]+":"+config[index]["port"])
 	if e != nil {
 		fmt.Println("Listen error: ", e)
 	}
 	log.Printf("Serving RPC server on port %d", config[index]["port"])
 
-	//fmt.Println("restart ===> ", restart)
-
-	// fmt.Println("calling sync replica")
-	// fmt.Println("Calling Sync replicas =======================")
 	err = SyncReplicas(time)
 
 	// Start accept incoming HTTP connections
-	// fmt.Println("Listening on the port ------------------------ ")
 	err = http.Serve(listener, nil)
 	if err != nil {
 		fmt.Println("Error serving: ", err)
@@ -468,14 +447,12 @@ func Init(index int, restart bool) error {
 
 func main() {
 	args := os.Args[1:]
-	//fmt.Printf("len %d", len(args))
 	serverIndex, _ = strconv.Atoi(args[0])
 	pid := os.Getpid()
 	fmt.Printf("Server %d starts with process id: %d\n", serverIndex, pid)
 	filename = config[serverIndex]["filename"]
 	_, err := os.Stat(filename)
 	if os.IsNotExist(err) {
-		// fmt.Println("creating new file", filename)
 		_, err := os.OpenFile(filename, os.O_CREATE, 0644)
 		if err != nil {
 			fmt.Println("Failed to create file ", err)

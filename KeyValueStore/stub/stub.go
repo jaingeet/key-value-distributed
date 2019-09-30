@@ -31,19 +31,15 @@ func kv739_init(cserverListArg **C.char, length C.int) C.int {
 	for i, s := range tmpslice {
 		serverListArg[i] = C.GoString(s)
 	}
-	// fmt.Printf("serverListArg %s\n", serverListArg[0])
 	rand.Seed(time.Now().UnixNano())
 	serverIndex = rand.Intn(len(serverListArg))
-	fmt.Printf("server index ====> %d\n", serverIndex)
 	serverList = serverListArg
 	address := serverList[serverIndex]
-	fmt.Println("Server address ===> ", address)
 	client, err = rpc.DialHTTP("tcp", address)
 	if err != nil {
 		fmt.Println("Connection error: ", err)
 		return C.int(-1)
 	}
-	fmt.Println("Dialled Http")
 	return C.int(0)
 }
 
@@ -73,7 +69,7 @@ func kv739_get(ckey *C.char, cvalue *C.char) C.int {
 							err := client.Call("Counter.GetKey", key, &value)
 							if err == nil {
 								serverIndex = index
-								if len(value) > 1 {
+								if len(value) > 0 {
 									convertGoToString(cvalue, value)
 									return C.int(0)
 								}
@@ -91,7 +87,7 @@ func kv739_get(ckey *C.char, cvalue *C.char) C.int {
 		}
 		return C.int(-1)
 	}
-	if len(value) > 1 {
+	if len(value) > 0 {
 		convertGoToString(cvalue, value)
 		return C.int(0)
 	}
@@ -115,7 +111,7 @@ func kv739_put(ckey *C.char, cvalue *C.char, coldValue *C.char) C.int {
 							err := client.Call("Counter.PutKey", KeyValuePair{Key: key, Value: value}, &oldValue)
 							if err == nil {
 								serverIndex = index
-								if len(oldValue) > 1 {
+								if len(oldValue) > 0 {
 									convertGoToString(coldValue, oldValue)
 									return C.int(0)
 								}
@@ -135,7 +131,7 @@ func kv739_put(ckey *C.char, cvalue *C.char, coldValue *C.char) C.int {
 		return C.int(-1)
 	}
 
-	if len(oldValue) > 1 {
+	if len(oldValue) > 0 {
 		convertGoToString(coldValue, oldValue)
 		return C.int(0)
 	}
@@ -143,6 +139,7 @@ func kv739_put(ckey *C.char, cvalue *C.char, coldValue *C.char) C.int {
 }
 
 func convertGoToString(coldValue *C.char, oldValue string) {
+	oldValue = oldValue + "\x00"
 	lenvalue := len(oldValue)
 	gData := (*[1 << 30]byte)(unsafe.Pointer(coldValue))[:lenvalue:lenvalue]
 	copy(gData[0:], oldValue)

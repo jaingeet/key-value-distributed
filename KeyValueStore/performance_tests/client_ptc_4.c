@@ -1,14 +1,13 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
-#include "keyvalue.h"
+#include "./../keyvalue.h"
 
-// 100% read - Get number_of_keys using a single client
+// Read 10% of the keys - Hot  keys
+// Keys pool size is equal to the cache capacity
 int main() {
-//    printf("To kill a server and check how long it takes a server to revive:\n");
-
     int number_of_keys = 10000;
-
+    char* oldValue = malloc(1024);
     char *serverList[] = {
        "localhost:8001",
        "localhost:8002",
@@ -16,26 +15,30 @@ int main() {
        NULL
     };
 
-    time_t start_time, end_time;
-    char* oldValue = malloc(1024);
     printf("Calling init %d \n", kv739_init(serverList, 3));
+
     for(int i = 0; i < number_of_keys; i++) {
         char str[12];
         sprintf(str, "%d", i);
         kv739_put(str, str, oldValue);
     }
 
+    time_t start_time, end_time;
     start_time = time(0);
     for(int i = 0; i < number_of_keys; i++) {
-        kv739_get("9999", oldValue);
-        printf("get key ===> %s\n", oldValue);
+        int random_number = rand() % 1000 + 8000;
+        char str[12];
+        sprintf(str, "%d", random_number);
+        kv739_get(str, oldValue);
     }
     end_time = time(0);
 
     double time_elapsed = difftime(end_time, start_time);
-    printf("start time, end time, timediff is : %f, %f, %f \n", (double) start_time, (double) end_time, time_elapsed);
     double throughput = number_of_keys/time_elapsed;
     double latency = time_elapsed/number_of_keys;
 
+    printf("start time, end time, timediff is : %f, %f, %f \n", (double) start_time, (double) end_time, time_elapsed);
     printf("throughput, latency is : %f, %f\n", (double) throughput, (double) latency);
+
+    return 0;
 }
