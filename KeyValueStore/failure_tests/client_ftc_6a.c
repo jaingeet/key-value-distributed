@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
-#include "keyvalue.h"
+#include "../keyvalue.h"
 
 
 char *serverList[] = {
@@ -31,7 +31,7 @@ int main()
         sprintf(str, "%d", i);
         kv739_put(str, str, oldValue);
         if (i == 500) {
-            char* kill_pid = "kill -9 30089";
+            char* kill_pid = "kill -9 39421";
             system(kill_pid);
         }
 	}

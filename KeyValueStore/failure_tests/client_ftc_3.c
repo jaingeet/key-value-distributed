@@ -1,7 +1,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
-#include "keyvalue.h"
+#include <string.h>
+#include "../keyvalue.h"
 
 // To test the time taken for the key update to propagate to other server if the server on which the operation happened fails immediately after
 //TODO: delete contents of files after first line, update the PID for server 2 here in order to kill it
@@ -18,7 +19,7 @@ int main() {
 
     char* oldValue = malloc(1024);
     char* key = "1023";
-    char* kill_pid = "kill -9 3564"; //This should be the PID of server 3
+    char* kill_pid = "kill -9 38530"; //This should be the PID of server 3
 
     char *serverList[] = {
         "localhost:8003",
@@ -43,7 +44,8 @@ int main() {
     time_t start_time, end_time;
 
     start_time = time(0);
-    while(*oldValue != *key) {
+    while(strcmp(oldValue, key) != 0) {
+        printf("oldvalue and key is %s %s ", oldValue, key);
         kv739_get("a", oldValue);
     }
 

@@ -31,7 +31,6 @@ type LRUCache struct {
 }
 
 func (lru *LRUCache) Init(cap int) {
-	fmt.Println("calling constructor")
 	lru.capacity = cap
 	lru.cache = make(map[string]*DLinkedList)
 }
@@ -239,7 +238,7 @@ func (c *Counter) PutKey(keyValue KeyValuePair, oldValue *string) error {
 			if err != nil {
 				// callback (check reply and restart server if there is a connection error)
 				fmt.Printf("%s ", err)
-				RestartServer(index)
+				// RestartServer(index)
 			} else {
 				defer client.Close()
 				client.Go("Counter.SyncKey", KeyValue{Key: keyValue.Key, Value: keyValue.Value, TimeStamp: curTimeStamp}, nil, nil)
