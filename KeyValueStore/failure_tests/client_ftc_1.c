@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
-#include "keyvalue.h"
+#include "../keyvalue.h"
 #include<string.h>
 
 // To test the time taken for the key update to propagate to another server

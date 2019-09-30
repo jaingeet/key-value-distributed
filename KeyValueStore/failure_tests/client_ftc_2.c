@@ -1,7 +1,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
-#include "keyvalue.h"
+#include <unistd.h>
+#include <string.h>
+#include "../keyvalue.h"
 
 // To test the time taken to propagate an update to the failed server when update happened
 //TODO: delete contents of files after first line, shutdown server 0
@@ -31,7 +33,9 @@ int main() {
     printf("Calling shutdown %d\n", kv739_shutdown());
 
     // Sync replica restarts the server before this is called (so it's awesome)
-    system("./server/server 0");
+    // system("../server/server 0");
+    
+    sleep(5);
 
     *serverList = "localhost:8001";
 
@@ -42,7 +46,7 @@ int main() {
     time_t start_time, end_time;
 
     start_time = time(0);
-    while(*oldValue != *key) {
+    while(strcmp(oldValue, key) != 0) {
         kv739_get("a", oldValue);
     }
     end_time = time(0);
@@ -55,4 +59,3 @@ int main() {
 // Server 2 is crashing: Returning index out of range error in function GetUpdates
 // This was because an empty line was inserted in 2.txt
 // Why was an empty line inserted?
-

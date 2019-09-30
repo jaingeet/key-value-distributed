@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"net/rpc"
 	"os"
+	"os/exec"
 	"strconv"
 	"strings"
 	"sync"
@@ -148,9 +149,9 @@ func (c *Counter) GetKey(key string, value *string) error {
 
 	val := lru.Get(key)
 	if val != "" {
-		*value = val;
+		*value = val
 		fmt.Printf("cache hit\n")
-		return nil;
+		return nil
 	}
 
 	fmt.Printf("cache miss\n")
@@ -257,14 +258,14 @@ func (c *Counter) PutKey(keyValue KeyValuePair, oldValue *string) error {
 
 func RestartServer(serverIndex int) {
 	// here -r is for server restart
-	// cmd := exec.Command("./server", strconv.Itoa(serverIndex), " -r", " &")
-	// err := cmd.Start()
-	// if err != nil {
-	// 	fmt.Printf("error\n")
-	// 	fmt.Println(err)
-	// }
-	// pid := cmd.Process.Pid
-	// fmt.Printf("Server %d restarts with process id: %d\n", serverIndex, pid)
+	cmd := exec.Command("./server", strconv.Itoa(serverIndex), " -r", " &")
+	err := cmd.Start()
+	if err != nil {
+		fmt.Printf("error\n")
+		fmt.Println(err)
+	}
+	pid := cmd.Process.Pid
+	fmt.Printf("Server %d restarts with process id: %d\n", serverIndex, pid)
 }
 
 func SyncReplicas(time int64) error {
@@ -425,22 +426,20 @@ func Init(index int, restart bool) error {
 
 	// Sync with the other server before restart
 	var time int64 = 0
-	if restart == true {
-		// read the last updated timestamp (-5 seconds etc -- for failover delay) from the file
-		file, err := os.OpenFile(filename, os.O_RDONLY, 0644)
-		defer file.Close()
-		if err != nil {
-			fmt.Println(err)
-			return err
-		}
-
-		scanner := bufio.NewScanner(file)
-		scanner.Scan()
-
-		var timestamp string = scanner.Text()
-		time, err = strconv.ParseInt(timestamp, 10, 64)
-		time = time - 20*1000*60*1000*1000 // 20 minutes
+	// read the last updated timestamp (-5 seconds etc -- for failover delay) from the file
+	file, err := os.OpenFile(filename, os.O_RDONLY, 0644)
+	defer file.Close()
+	if err != nil {
+		fmt.Println(err)
+		return err
 	}
+
+	scanner := bufio.NewScanner(file)
+	scanner.Scan()
+
+	var timestamp string = scanner.Text()
+	time, err = strconv.ParseInt(timestamp, 10, 64)
+	time = time - 20*1000*60*1000*1000 // 20 minutes
 
 	// Register a HTTP handler
 	rpc.HandleHTTP()
@@ -454,11 +453,9 @@ func Init(index int, restart bool) error {
 
 	//fmt.Println("restart ===> ", restart)
 
-	if restart == true {
-		// fmt.Println("calling sync replica")
-		// fmt.Println("Calling Sync replicas =======================")
-		err = SyncReplicas(time)
-	}
+	// fmt.Println("calling sync replica")
+	// fmt.Println("Calling Sync replicas =======================")
+	err = SyncReplicas(time)
 
 	// Start accept incoming HTTP connections
 	// fmt.Println("Listening on the port ------------------------ ")
