@@ -20,7 +20,6 @@ int main()
     time_t start_time, end_time;
     start_time = time(0);
 	for (int i = start_key; i < end_key; i++) {
-        printf("key is, %d\n", i);
         char str[12];
         sprintf(str, "%d", i);
         kv739_put(str, str, oldValue);
@@ -33,6 +32,5 @@ int main()
 
     printf("start time, end time, timediff is : %f, %f, %f \n", (double) start_time, (double) end_time, time_elapsed);
     printf("throughput, latency is : %f, %f\n", (double) throughput, (double) latency);
-
 	return 0;
 }

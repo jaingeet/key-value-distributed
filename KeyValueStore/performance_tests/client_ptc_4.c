@@ -4,6 +4,7 @@
 #include "./../keyvalue.h"
 
 // Read 10% of the keys - Hot  keys
+// Keys pool size is equal to the cache capacity
 int main() {
     int number_of_keys = 10000;
     char* oldValue = malloc(1024);
