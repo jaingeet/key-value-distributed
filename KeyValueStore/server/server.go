@@ -350,6 +350,7 @@ func SyncKeyLocally(keyValue KeyValue) error {
 				TimeInFile, err = strconv.ParseInt(array[2], 10, 64)
 				if TimeInFile < UpdatedTime {
 					lines[i] = newKeyValueString
+
 				}
 				found = true
 				break
@@ -360,6 +361,7 @@ func SyncKeyLocally(keyValue KeyValue) error {
 	if !found {
 		lines = append(lines, newKeyValueString)
 	}
+	lru.Put(keyValue.Key, keyValue.Value)
 
 	TimeInFile, err = strconv.ParseInt(lines[0], 10, 64)
 
