@@ -10,9 +10,9 @@ int main() {
     int number_of_keys = 10000;
     char* oldValue = malloc(1024);
     char *serverList[] = {
-       "localhost:8001",
-       "localhost:8002",
-       "localhost:8003",
+       "10.10.1.1:8001",
+       "10.10.1.2:8002",
+       "10.10.1.3:8003",
        NULL
     };
 
@@ -22,29 +22,29 @@ int main() {
     start_time = time(0);
     for(int i = 0; i < number_of_keys; i++) {
         char str[12];
-        sprintf(str, "%d", i);
+        // sprintf(str, "%d", i);
         kv739_put(str, str, oldValue);
     }
     end_time = time(0);
 
-    int not_found = 0;
-    int wrong_values_count = 0;
+    // int not_found = 0;
+    // int wrong_values_count = 0;
 
-    for(int i = 0; i<number_of_keys; i++) {
-        char str[12];
-        sprintf(str, "%d", i);
-        int x = kv739_get(str, oldValue);
-        if( x == -1) {
-            not_found++;
-        }
+    // for(int i = 0; i<number_of_keys; i++) {
+    //     char str[12];
+    //     // sprintf(str, "%d", i);
+    //     int x = kv739_get(str, oldValue);
+    //     if( x == -1) {
+    //         not_found++;
+    //     }
 
-        if(strcmp(str, oldValue) != 0) {
-            printf("wrong => %s, %s\n", str, oldValue);
-            wrong_values_count++;
-        }
-    }
-    printf("Keys Not Found => %d\n", not_found);
-    printf("Value wrong Found => %d\n", wrong_values_count);
+    //     if(strcmp(str, oldValue) != 0) {
+    //         // printf("wrong => %s, %s\n", str, oldValue);
+    //         wrong_values_count++;
+    //     }
+    // }
+    // printf("Keys Not Found => %d\n", not_found);
+    // printf("Value wrong Found => %d\n", wrong_values_count);
 
     double time_elapsed = difftime(end_time, start_time);
     double throughput = number_of_keys/time_elapsed;

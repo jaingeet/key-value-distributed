@@ -4,7 +4,7 @@
 #include "./../keyvalue.h"
 
 char *serverList[] = {
-    "localhost:8002",
+    "10.10.1.3:8002",
     NULL
 };
 
@@ -21,7 +21,7 @@ int main()
     start_time = time(0);
 	for (int i = start_key; i < end_key; i++) {
         char str[12];
-        sprintf(str, "%d", i);
+        // sprintf(str, "%d", i);
         kv739_put(str, str, oldValue);
 	}
 	end_time = time(0);

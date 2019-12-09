@@ -9,9 +9,9 @@ int main() {
     int number_of_keys = 10000;
     char* oldValue = malloc(1024);
     char *serverList[] = {
-       "localhost:8001",
-       "localhost:8002",
-       "localhost:8003",
+       "10.10.1.1:8001",
+       "10.10.1.2:8002",
+       "10.10.1.3:8003",
        NULL
     };
 
@@ -20,9 +20,9 @@ int main() {
     // Put number_of_keys
     for(int i = 0; i < number_of_keys; i++) {
         char str[12];
-        sprintf(str, "%d", i);
+        // sprintf(str, "%d", i);
         kv739_put(str, str, oldValue);
-        printf("%d", i);
+        // printf("%d", i);
     }
     time_t start_time, end_time;
 
@@ -33,13 +33,13 @@ int main() {
     start_time = time(0);
     for(int i = 0; i < number_of_keys; i++) {
         char str[12];
-        sprintf(str, "%d", i);
+        // sprintf(str, "%d", i);
         int x = kv739_get(str, oldValue);
         if( x == -1) {
             not_found++;
         }
         if(strcmp(str, oldValue) != 0) {
-            printf("wrong => %s, %s\n", str, oldValue);
+            // printf("wrong => %s, %s\n", str, oldValue);
             wrong_values_count++;
         }
     }
